@@ -36,14 +36,18 @@ import unittest
 import JavaScriptCore
 import JavaScriptCoreRaw
 
+#-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
+    #---------------------------------------------------------------
     def setUp(self): pass
     def tearDown(self): pass
 
+    #---------------------------------------------------------------
     def test_LoadLib(self):
-    	JavaScriptCoreRaw.JSGarbageCollect()
-    	    	
+        JavaScriptCoreRaw.JSGarbageCollect()
+                
+#-------------------------------------------------------------------
 if __name__ == '__main__':
     unittest.main()
 

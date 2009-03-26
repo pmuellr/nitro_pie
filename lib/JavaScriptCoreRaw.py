@@ -51,13 +51,13 @@ PARM_ZERO = 4
 # per the ctypes conventions
 #-------------------------------------------------------------------
 def defineFunction(name, resType, parms):
-	types      = [ptype                     for ptype, pflags, pname, pdefault in parms]
-	paramFlags = [(pflags, pname, pdefault) for ptype, pflags, pname, pdefault in parms]
-	
-	prototype = CFUNCTYPE(resType, *types)
-	function  = prototype((name, JSC), tuple(paramFlags))
-	
-	return function
+    types      = [ptype                     for ptype, pflags, pname, pdefault in parms]
+    paramFlags = [(pflags, pname, pdefault) for ptype, pflags, pname, pdefault in parms]
+    
+    prototype = CFUNCTYPE(resType, *types)
+    function  = prototype((name, JSC), tuple(paramFlags))
+    
+    return function
 
 #-------------------------------------------------------------------
 # enums
@@ -227,7 +227,7 @@ JSStaticValue._fields_ = [
 #-------------------------------------------------------------------
 class JSClassDefinition(ctypes.Structure): pass
 JSClassDefinition._fields_ = [
-	("version",           c_int),
+    ("version",           c_int),
     ("attributes",        JSClassAttributes),
     ("className",         c_char_p),
     ("parentClass",       JSClassRef),

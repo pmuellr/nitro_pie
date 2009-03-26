@@ -43,21 +43,33 @@ class Test(unittest.TestCase):
     def tearDown(self): pass
 
     #---------------------------------------------------------------
-    def test_round_trip(self):
-        string = "abc123"
+    def test_valid_syntax(self):
+        script = "a = 1"
         
-        jsString = JavaScriptCore.string2jsString(string)
-        string2  = JavaScriptCore.jsString2string(jsString)
-        self.assertEqual(string, string2)
+        ctx = JavaScriptCore.JSContext()
+        ctx = ctx.retain()
+        
+        result = ctx.checkScriptSyntax(script)
+        self.assertEqual(1, result)
+        
+        ctx.release()
         
     #---------------------------------------------------------------
-    def test_unicode(self):
-        string = u'Make \u0633\u0644\u0627\u0645, not war.'
-        string_utf8 = string.encode("utf-8")
+    def test_invalid_syntax(self):
+        script = "var 1a = 1"
         
-        jsString = JavaScriptCore.string2jsString(string)
-        string2  = JavaScriptCore.jsString2string(jsString)
-        self.assertEqual(string_utf8, string2)
+        ctx = JavaScriptCore.JSContext()
+        ctx = ctx.retain()
+        
+        threw  = 0
+        try:
+            ctx.checkScriptSyntax(script)
+        except JavaScriptCore.JSException, e:
+            threw = 1
+            
+        self.assertEqual(1, threw, "exception not thrown")
+        
+        ctx.release()
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

@@ -34,13 +34,20 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import test_jsstring
 import test_load_lib
+import test_check_script_syntax
 
 suite  = unittest.TestSuite()
 result = unittest.TestResult()
 runner = unittest.TextTestRunner()
 
-suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(test_jsstring))
-suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(test_load_lib))
+#-------------------------------------------------------------------
+def addTest(module):
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(module))
+    
+#-------------------------------------------------------------------
+addTest(test_jsstring)
+addTest(test_load_lib)
+addTest(test_check_script_syntax)
 
 runner.run(suite)
 
