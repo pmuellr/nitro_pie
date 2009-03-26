@@ -42,13 +42,8 @@ class Test(unittest.TestCase):
     def tearDown(self): pass
 
     def test_LoadLib(self):
-    	print "JSCheckScriptSyntax: %s" % str(JavaScriptCoreRaw.JSCheckScriptSyntax)
-    	print "JSGarbageCollect:    %s" % str(JavaScriptCoreRaw.JSGarbageCollect)
-    	
-    def test_GarbageCollect(self):
     	JavaScriptCoreRaw.JSGarbageCollect()
-    	JavaScriptCoreRaw.JSGarbageCollect(None)
-    	
+    	    	
 if __name__ == '__main__':
     unittest.main()
 

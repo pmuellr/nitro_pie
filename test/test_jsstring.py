@@ -22,25 +22,39 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-# 
+#
 #-------------------------------------------------------------------
 
 import os
 import sys
-import unittest
 
 lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
 if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
-import test_jsstring
-import test_load_lib
+import unittest
 
-suite  = unittest.TestSuite()
-result = unittest.TestResult()
-runner = unittest.TextTestRunner()
+import JavaScriptCore
 
-suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(test_jsstring))
-suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(test_load_lib))
+class Test(unittest.TestCase):
+    
+    def setUp(self): pass
+    def tearDown(self): pass
 
-runner.run(suite)
+    def test_round_trip(self):
+    	string = "abc123"
+    	
+    	jsString = JavaScriptCore.string2jsString(string)
+    	string2  = JavaScriptCore.jsString2string(jsString)
+    	self.assertEqual(string, string2)
+    	
+    def test_unicode(self):
+    	string = u'Make \u0633\u0644\u0627\u0645, not war.'
+    	string_utf8 = string.encode("utf-8")
+    	
+    	jsString = JavaScriptCore.string2jsString(string)
+    	string2  = JavaScriptCore.jsString2string(jsString)
+    	self.assertEqual(string_utf8, string2)
+    	
+if __name__ == '__main__':
+    unittest.main()
 

@@ -28,7 +28,33 @@ __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
 __date__    = "2009-03-25"
 __version__ = "0.1"
 
+from ctypes import *
+
 from JavaScriptCoreRaw import JSC
 
+#--------------------------------------------------------------------
+# convert a string to a JSString
+#--------------------------------------------------------------------
+def string2jsString(string):
+	if isinstance(string, str):
+		return JSC.JSStringCreateWithUTF8CString(string)
+	
+	elif isinstance(string, unicode):
+		return JSC.JSStringCreateWithUTF8CString(string.encode("utf-8"))
+		
+	else:
+		raise TypeError, "expecting a string"
+
+#--------------------------------------------------------------------
+# convert a JSString to a string - always utf8
+#--------------------------------------------------------------------
+def jsString2string(jsString):
+	len = JSC.JSStringGetMaximumUTF8CStringSize(jsString)
+	
+	result = c_char_p(" " * len)
+
+	JSC.JSStringGetUTF8CString(jsString, result, len)
+	
+	return result.value
 
 
