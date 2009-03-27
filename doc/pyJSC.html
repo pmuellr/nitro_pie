@@ -1,0 +1,484 @@
+<html>
+
+<!-- ====================================================== -->
+<head>
+<title id="head_title">pyJSC - Python interface for JavaScriptCore</title>
+<style type="text/css">
+
+/*-----------------------------------------------------------------*/
+body {
+    font-family:        sans-serif;
+    color:              #333;
+    background:         #EEE;
+    margin-left:        10em;
+    margin-right:        3em;
+}
+
+/*-----------------------------------------------------------------*/
+/*
+a:link, a:visited { 
+    color:              blue;
+}
+*/
+
+/*-----------------------------------------------------------------*/
+code, .code {
+    font-weight:        bold;
+    font-family:        monospace;
+    color:              #055;
+
+}
+
+/*-----------------------------------------------------------------*/
+pre, xmp {
+    border-width:       1;
+    border-style:       solid;
+    overflow:           auto;
+    padding-top:        0.4em;
+    padding-bottom:     0.4em;
+    padding-left:       1.4em;
+    padding-right:      1.4em;
+    margin-left:        1.4em;
+    margin-right:       1.4em;
+    background:         #FFFFDF;
+}
+
+
+/*-----------------------------------------------------------------*/
+h1,h2,h3 {
+    padding-left:         2em;
+    padding-right:      0.3em;
+    padding-top:        0.3em;
+    padding-bottom:     0.3em;
+    border-width:       0;
+    background:         #227;
+    color:              #FFF;
+    text-shadow:        2px 2px 2px #777;
+}
+
+/*-----------------------------------------------------------------*/
+h1 {
+    margin-left:         -3em;
+    font-size:          250%;
+}
+
+/*-----------------------------------------------------------------*/
+h2 {
+    margin-left:         -2em;
+}
+
+/*-----------------------------------------------------------------*/
+h3 {
+    background:          #77A;
+    margin-left:         -1em;
+    padding-left:         1em;
+}
+
+.code-head, .code-parms, .code-returns, .code-throws {
+    font-weight:         bold;
+    margin-left:         -1em;
+    padding-left:         1em;
+}
+
+.code-block {
+    margin-left:          3em;
+}
+
+.code-head {
+    font-family:         monospace;
+    background:          #CCF;
+    padding-top:          5px;
+    padding-bottom:       5px;
+}
+
+.code-parms, .code-returns, .code-throws {
+    padding-top:          0;
+    padding-bottom:       0;
+}
+
+/*-----------------------------------------------------------------*/
+.url {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+/*-----------------------------------------------------------------*/
+.page-break {
+}
+/*
+page-break-before: always;
+*/
+
+/*-----------------------------------------------------------------*/
+.warning {
+    font-weight:      bold;
+    font-size:        150%;
+    background-color: #FAA;
+}
+
+/*-----------------------------------------------------------------*/
+.header-link {
+    font-weight:      normal;
+    font-size:        80%;
+    text-shadow:      none;
+}
+
+/*-----------------------------------------------------------------*/
+@media print {
+    body {
+        background:         #FFF;
+    }
+    
+    pre, xmp {
+        overflow:           hidden;
+        background:         #FFFFEF;
+    }
+    /*
+    */
+}
+
+</style>
+
+<!-- ======================================================================= -->
+<script type="text/javascript">
+function body_onload() {
+    // make head title same as document title
+    var head_title = document.getElementById("head_title").innerHTML
+    document.getElementById("body_title").innerHTML = head_title
+
+    // make spans of class url into links
+    var spans = document.getElementsByTagName("span")
+    for (var i=0; i<spans.length; i++) {
+        var span = spans[i]
+        if (span.className != "url") 
+            continue
+        var url  = span.innerHTML
+        span.innerHTML = "<a href='" + url + "'>" + url + "</a>"
+    }
+    
+    // build TOC
+    toc_ul = document.getElementById("toc_ul")
+    if (null == toc_ul) return
+    
+    var h2s = document.getElementsByTagName("h2")
+    var toc_entries = []
+    for (var i=1; i<h2s.length; i++) {
+        var h2 = h2s[i]
+        var h2_text = h2.innerHTML
+        
+        var entry = "<li><a href='#toc." + i + "'>" + h2_text + "</a></li>"
+        toc_entries.push(entry)
+        
+        var anchor = document.createElement("a")
+        anchor.id = "toc." + i
+        h2.parentNode.insertBefore(anchor,h2)
+    }
+    
+    toc_entries = toc_entries.join("\n")
+    toc_ul.innerHTML = toc_entries
+}
+</script>
+</head>
+
+<!-- ====================================================== -->
+<body onload="body_onload()">
+    
+<h1 id="body_title">title should have been filled in via JavaScript</h1>
+
+<!-- ====================================================== -->
+
+<!--
+<h3>Permalink</h3>
+<ul>
+<li><span class="url">http://rtpgsa.ibm.com/~pmuellr/papers/private/EGL/egl-java-analysis.html</span></li>
+</ul>
+-->
+
+<h3>History</h3>
+<ul>
+<li>2009-03-26 - Patrick Mueller - initial write-up</li>
+</ul>
+
+<!-- ====================================================== -->
+<h2>Table of Contents</h2>
+<ul id="toc_ul">
+</ul>
+<!--
+--/>
+
+<!-- ====================================================== -->
+<h2>Introduction</h2>
+
+<p>The <code>pyJSC</code> package implements a Python module
+named <code>JavaScriptCore</code> which is a Python version
+of the C API for</p>
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>,
+which is the JavaScript engine shipped with 
+<a href="http://webkit.org/">WebKit</a>.
+You may want to get familiarity with this framework before using
+this package in anger.
+</p>
+
+<!-- ====================================================== -->
+<h2>Installation</h2>
+
+<p>The <code>JavaScriptCore</code> module is implemented in a single file,
+<code>JavaScriptCore.py</code>.  You can just copy this file into
+an appropriate directory to use with other Python code.
+</p>
+
+<p>The module makes extensive use of the 
+<code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
+module, which is included in Python distributions starting with version 2.5.
+This module has currently only be tested or used on Mac OS X, and will likely
+need some changes to run on other operating systems.</p>
+
+<!-- ====================================================== -->
+<h2>Usage</h2>
+
+<!-- ====================================================== -->
+<h2>Data conversions</h2>
+
+<p>Where appropriate, data types are automatically converted between
+JavaScript and Python automagically.  Conversions include:</p>
+
+<table cellspacing="0" cellpadding="3" frame="border" rules="all">
+
+<tr>
+<td><b>Python</b></td>
+<td><b>JavaScript</b></td>
+<td><b>Description</b></td>
+</tr>
+
+<tr>
+<td><code>None</code></td>
+<td><code>null</code></td>
+<td>one-to-one conversion</td>
+</tr>
+
+<tr>
+<td><code>JSUndefined</code></td>
+<td><code>undefined</code></td>
+<td>one-to-one conversion - <code>JSUndefined</code> is a property
+provided by this module,
+and is an instance of the <code>JSObject</code> class.</td>
+</tr>
+
+<tr>
+<td><code>True</code></td>
+<td><code>true</code></td>
+<td>one-to-one conversion</td>
+</tr>
+
+<tr>
+<td><code>False</code></td>
+<td><code>false</code></td>
+<td>one-to-one conversion</td>
+</tr>
+
+<tr>
+<td><code>int</code><br><code>float</code><br><code>long</code></td>
+<td><code>Number</code></td>
+<td>
+Python <code>int</code>, <code>float</code> and <code>long</code>
+values will be converted into JavaScript <code>Number</code> values.
+JavaScript <code>Number</code> values will be converted into 
+Python <code>double</code> values.
+</td>
+</tr>
+
+<tr>
+<td><code>str</code><br><code>unicode</code></td>
+<td><code>String</code></td>
+<td>
+Python <code>str</code> and <code>unicode</code>
+values will be converted to JavaScript <code>String</code>
+values.  Python <code>str</code> values are assumed to be UTF-8
+encoded (which implies 7 bit ASCII is acceptable).
+JavaScript <code>String</code> values will be converted into 
+Python <code>str</code> values, encoded as UTF-8.
+</td>
+</tr>
+
+<tr>
+<td><code>JSFunction</code></td>
+<td><code>Function</code></td>
+<td>
+<code>JSFunction</code> is a class provided by this module,
+and is a subclass of <code>JSObject</code>.
+</td>
+</tr>
+
+<tr>
+<td><code>JSArray</code><br><code>tuple</code><br><code>list</code></td>
+<td><code>Array</code></td>
+<td>
+Python <code>JSArray</code>, <code>tuple</code> and <code>list</code>
+values will be converted to JavaScript <code>Array</code>
+values.
+JavaScript <code>Array</code> values will be converted into
+Python <code>JSArray</code> values.
+<code>JSArray</code> is a class provided by this module,
+and is a subclass of <code>JSObject</code>.
+</td>
+</tr>
+
+<tr>
+<td><code>JSObject</code></td>
+<td><code>Object</code> (everything else)</td>
+<td>
+Python <code>JSObject</code>
+values will be converted to bare JavaScript <code>Object</code>
+values (like JSON objects) by recursively copying properties.
+JavaScript values not otherwise automagically converted to
+other types will be converted to <code>JSObject</code>
+values.
+<code>JSObject</code> is a class provided by this module.
+</td>
+</tr>
+
+</table>
+
+<p>The array and object conversions do not currently handle
+recursive structures.  Trying to convert Python objects
+which are otherwise not automagically converted will 
+result in an exception.</p>
+
+<!-- ====================================================== -->
+<h2>JavaScriptCore Module Reference</h2>
+
+<p>In general, the functions and methods in classes in this module
+are veneers over the C APIs for JavaScriptCore as documented
+at the
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
+available at the ADC.</p>
+
+<p>The methods in the classes in this module follow the
+<a href="http://developer.apple.com/documentation/CoreFoundation/Conceptual/CFMemoryMgmt/Concepts/Ownership.html">Core Foundation Ownership Policy</a>
+naming conventions and behaviors.
+</p>
+
+<!-- ====================================================== -->
+<h3>Constants</h3>
+
+<div class="code-head">JSUndefined</div>
+
+<p>Used to represent instances of the <code>undefined</code>
+value in JavaScript.</p>
+
+<!-- ====================================================== -->
+<h3>Exceptions</h3>
+
+<p>When JavaScript exceptions are caught by the API, they
+are converted Python <code>JSException</code> values,
+and then raised by the Python code.
+This class is a subclass of the <code>JSObject</code>
+class, as well as the base Python <code>Exception</code>
+class.</p>
+
+<p>Exception conditions not related to JavaScript invocation
+are handled by raising Python 
+<code>Exception</code> values that generally will not
+need to be caught in well-tested usage of this package.</p>
+
+<!-- ====================================================== -->
+<h3>Functions</h3>
+
+<!-- ====================================================== -->
+<div class="code-head">garbageCollect()</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSGarbageCollect()</code>.</p>
+
+<div class="code-returns">Returns</div>
+
+<p>Nothing</p>
+</div>
+
+<!-- ====================================================== -->
+<h3>Class JSContext</h3>
+
+<!-- ====================================================== -->
+<div class="code-head">JSContext()</div>
+
+<p>A veneer over <code>JSGlobalContextCreate()</code>.</p>
+
+<!-- ====================================================== -->
+<div class="code-head">retain()</div>
+
+<p>A veneer over <code>JSGlobalContextRetain()</code>.</p>
+
+<div class="code-returns">Returns</div>
+<p>A new instance of <code>JSContext</code></p>
+
+<!-- ====================================================== -->
+<div class="code-head">release()</div>
+
+<p>A veneer over <code>JSGlobalContextRelease()</code>.</p>
+
+<!-- ====================================================== -->
+<div class="code-head">getGlobalObject()</div>
+
+<p>A veneer over <code>JSContextGetGlobalObject()</code>.</p>
+
+<div class="code-returns">Returns</div>
+<p>An object</p>
+
+<!-- ====================================================== -->
+<div class="code-head">checkScriptSyntax(script, sourceURL, startingLineNumber)</div>
+
+<p>A veneer over <code>JSCheckScriptSyntax()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>script</code> - a string</li>
+<li><code>sourceURL</code> - a string</li>
+<li><code>startingLineNumber</code> - an integer</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p><code>True</code> or <code>False</code></p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value</p>
+
+<!-- ====================================================== -->
+<div class="code-head">evaluateScript()</div>
+
+<p>A veneer over <code>JSEvaluateScript(script, thisObject, sourceURL, startingLineNumber)</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>script</code> - a string</li>
+<li><code>thisObject</code> - an object</li>
+<li><code>sourceURL</code> - a string</li>
+<li><code>startingLineNumber</code> - an integer</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p><code>True</code> or <code>False</code></p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value</p>
+
+<!-- ====================================================== -->
+<h3>Class JSObject</h3>
+
+<!-- ====================================================== -->
+<h3>Class JSException</h3>
+
+<p>This class is a subclass of the <code>JSObject</code> class
+as well as the base Python <code>Exception</code> class.
+The <code>args</code> attribute contains the object that
+was thrown from the JavaScript code.  Per JavaScript 
+convention, this may be any object.  These objects are 
+converted per the <b>Data Conversion</b> rules.  Thus,
+the <code>args</code> attribute may contain a Python
+value like a <code>str</code>, or a <code>JSObject</code>
+value which maps into some JavaScript error value like an
+<code>Error</code> value.
+</p>
+
+</body>
+
+</html>
