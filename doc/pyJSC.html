@@ -219,6 +219,11 @@ You may want to get familiarity with this framework before using
 this package in anger.
 </p>
 
+<p>Note that the <code>JavaScriptCore</code> module not expose
+all of the WebKit APIs.  In particular, things related to
+<code>JSClass</code> and creating native constructors
+is not implemented.</p>
+
 <!-- ====================================================== -->
 <h2>Installation</h2>
 
@@ -362,9 +367,39 @@ naming conventions and behaviors.
 <h3>Constants</h3>
 
 <div class="code-head">JSUndefined</div>
-
+<div class="code-block">
 <p>Used to represent instances of the <code>undefined</code>
 value in JavaScript.</p>
+</div>
+
+<div class="code-head" style="font-family:inherit">Type constants</div>
+<div class="code-block">
+<p>The following constants are returned by the
+<code>JSObject.getType()</code> instance method.
+</p>
+<ul>
+<li><code>JSTypeUndefined</code></li>
+<li><code>JSTypeNull</code></li>
+<li><code>JSTypeBoolean</code></li>
+<li><code>JSTypeNumber</code></li>
+<li><code>JSTypeString</code></li>
+<li><code>JSTypeObject</code></li>
+</ul>
+</div>
+
+<div class="code-head" style="font-family:inherit">Property constants</div>
+<div class="code-block">
+<p>The following constants are used in the
+<code>JSObject.setProperty()</code> instance method.
+</p>
+<ul>
+<li><code>JSPropertyAttributeNone</code></li>
+<li><code>JSPropertyAttributeReadOnly</code></li>
+<li><code>JSPropertyAttributeDontEnum</code></li>
+<li><code>JSPropertyAttributeDontDelete</code></li>
+</ul>
+</div>
+
 
 <!-- ====================================================== -->
 <h3>Exceptions</h3>
@@ -382,7 +417,18 @@ are handled by raising Python
 need to be caught in well-tested usage of this package.</p>
 
 <!-- ====================================================== -->
-<h3>Functions</h3>
+<h3>Class JSContext</h3>
+
+<p>The following are all instance methods, except for 
+<code>JSContext()</code>, which is a constructor.
+</p>
+
+<!-- ====================================================== -->
+<div class="code-head">JSContext()</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSGlobalContextCreate()</code>.</p>
+</div>
 
 <!-- ====================================================== -->
 <div class="code-head">garbageCollect()</div>
@@ -390,42 +436,38 @@ need to be caught in well-tested usage of this package.</p>
 
 <p>A veneer over <code>JSGarbageCollect()</code>.</p>
 
-<div class="code-returns">Returns</div>
-
-<p>Nothing</p>
 </div>
 
 <!-- ====================================================== -->
-<h3>Class JSContext</h3>
-
-<!-- ====================================================== -->
-<div class="code-head">JSContext()</div>
-
-<p>A veneer over <code>JSGlobalContextCreate()</code>.</p>
-
-<!-- ====================================================== -->
 <div class="code-head">retain()</div>
+<div class="code-block">
 
 <p>A veneer over <code>JSGlobalContextRetain()</code>.</p>
 
 <div class="code-returns">Returns</div>
 <p>A new instance of <code>JSContext</code></p>
+</div>
 
 <!-- ====================================================== -->
 <div class="code-head">release()</div>
+<div class="code-block">
 
 <p>A veneer over <code>JSGlobalContextRelease()</code>.</p>
+</div>
 
 <!-- ====================================================== -->
 <div class="code-head">getGlobalObject()</div>
+<div class="code-block">
 
 <p>A veneer over <code>JSContextGetGlobalObject()</code>.</p>
 
 <div class="code-returns">Returns</div>
 <p>An object</p>
+</div>
 
 <!-- ====================================================== -->
 <div class="code-head">checkScriptSyntax(script, sourceURL, startingLineNumber)</div>
+<div class="code-block">
 
 <p>A veneer over <code>JSCheckScriptSyntax()</code>.</p>
 
@@ -441,11 +483,13 @@ need to be caught in well-tested usage of this package.</p>
 
 <div class="code-returns">Throws</div>
 <p><code>JSException</code> value</p>
+</div>
 
 <!-- ====================================================== -->
-<div class="code-head">evaluateScript()</div>
+<div class="code-head">evaluateScript(script, thisObject, sourceURL, startingLineNumber)</div>
+<div class="code-block">
 
-<p>A veneer over <code>JSEvaluateScript(script, thisObject, sourceURL, startingLineNumber)</code>.</p>
+<p>A veneer over <code>JSEvaluateScript()</code>.</p>
 
 <div class="code-parms">Parameters</div>
 <ul>
@@ -460,9 +504,446 @@ need to be caught in well-tested usage of this package.</p>
 
 <div class="code-returns">Throws</div>
 <p><code>JSException</code> value</p>
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">makeConstructorWithCallback(name, callback)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectMakeConstructor()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>name</code> - a string</li>
+<li><code>callback</code> - the Python function to call when the constructor is invoked in JavaScript</li>
+</ul>
+
+<p>The callback function will be passed the following arguments:
+<ul>
+<li><code>ctx</code> - a JSContext value</li>
+<li><code>constructor</code> - the object representing this constructor</li>
+<li><code>arguments</code> - the list of arguments</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An object which is the newly created constructor</p>
+<p>The callback function itself should return the value which the constructor
+intended to return.</p>
+
+<div class="code-returns">Throws</div>
+<p>While this method does not throw any exceptions, the callback
+function may, and they should be <code>JSException</code> values.</p>
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">makeFunctionWithCallback(name, callback)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectMakeFunctionWithCallback()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>name</code> - a string</li>
+<li><code>callback</code> - the Python function to call when the function is invoked in JavaScript</li>
+</ul>
+
+<p>The callback function will be passed the following arguments:
+<ul>
+<li><code>ctx</code> - a JSContext value</li>
+<li><code>function</code> - the object representing this function</li>
+<li><code>thisObject</code> - the 'this' object for the function invocation</li>
+<li><code>arguments</code> - the list of arguments</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An object which is the newly created function</p>
+<p>The callback function itself should return the value which the function
+intended to return.</p>
+
+<div class="code-returns">Throws</div>
+<p>While this method does not throw any exceptions, the callback
+function may, and they should be <code>JSException</code> values.</p>
+</div>
 
 <!-- ====================================================== -->
 <h3>Class JSObject</h3>
+
+<!-- ====================================================== -->
+<div class="code-head">getType(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueGetType()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>One of the module type constants as described above</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">
+isBoolean(ctx)<br>
+isNull(ctx)<br>
+isNumber(ctx)<br>
+isObject(ctx)<br>
+isString(ctx)<br>
+isUndefined(ctx)
+</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueIsXxx()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean value indicating whether the object is 
+of the specified type.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">
+isEqual(ctx, object)<br>
+isStrictEqual(ctx, object)
+</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueIsEqual()</code> and <code>JSValueIsStrictEqual()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>object</code> - an object</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean value indicating whether the object is 
+equal to the specified object.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value for the <code>IsEqual()</code> method.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">isInstanceOf(ctx, constructor)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueIsInstanceOfConstructor()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>constructor</code> - an object to test against, presumably a constructor</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean value indicating whether the object is an instance of the specified
+constructor.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">protect(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueProtect()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">unprotect(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueUnprotect()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">toString(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSValueToStringCopy()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A string.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">callAsConstructor(ctx, arguments)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectCallAsConstructor()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>arguments</code> - an array of arguments</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>The newly constructed argument.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">callAsFunction(ctx, thisObject, arguments)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectCallAsConstructor()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>thisObject</code> - a JSObject to server as <code>this</code> for the function</li>
+<li><code>arguments</code> - an array of arguments</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>The return value from the function invocation.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">getPropertyNames(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectCopyPropertyNames()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An array of property names.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">deleteProperty(ctx, propertyName)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectDeleteProperty()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyName</code> - a string</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean indicating success.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">getProperty(ctx, propertyName)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectGetProperty()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyName</code> - a string</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An object which is the value of the property.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">getPropertyAtIndex(ctx, propertyIndex)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectGetPropertyAtIndex()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyIndex</code> - an integer</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An object which is the value of the property.</p>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">getPrototype(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectGetPrototype()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>An object which is the prototype of the object.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">hasProperty(ctx, propertyName)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectHasProperty()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyName</code> - a string</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean indicating if the object has the specified property.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">isConstructor(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectIsConstructor()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean indicating if the object is a constructor.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">isFunction(ctx)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectIsFunction()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+</ul>
+
+<div class="code-returns">Returns</div>
+<p>A boolean indicating if the object is a function.</p>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">setProperty(ctx, propertyName, value, attributes)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectSetProperty()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyName</code> - a string</li>
+<li><code>value</code> - an object</li>
+<li><code>attributes</code> - an integer of flags describing the property</li>
+</ul>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">setPropertyAtIndex(ctx, propertyIndex, value)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectSetPropertyAtIndex()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>propertyIndex</code> - an integer</li>
+<li><code>value</code> - an object</li>
+</ul>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
+
+<!-- ====================================================== -->
+<div class="code-head">setPrototype(ctx, value)</div>
+<div class="code-block">
+
+<p>A veneer over <code>JSObjectSetPrototype()</code>.</p>
+
+<div class="code-parms">Parameters</div>
+<ul>
+<li><code>ctx</code> - a JSContext</li>
+<li><code>value</code> - an object</li>
+</ul>
+
+<div class="code-returns">Throws</div>
+<p><code>JSException</code> value.</p>
+</div>
+
+</div>
 
 <!-- ====================================================== -->
 <h3>Class JSException</h3>
