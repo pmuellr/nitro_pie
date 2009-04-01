@@ -110,39 +110,6 @@ def _jsString2string(jsString):
     return result.value
 
 #--------------------------------------------------------------------
-class JSException(Exception):
-    """Models a JavaScript exception
-    
-    When JavaScript exceptions are caught by the API, they are 
-    converted Python JSException values, and then raised by the 
-    Python code. This class is a subclass of the JSObject class, 
-    as well as the base Python Exception class.
-    
-    Exception conditions not related to JavaScript invocation are 
-    handled by raising Python Exception values that generally will 
-    not need to be caught in well-tested usage of this package.
-    
-    This class is a subclass of the JSObject class as well as the 
-    base Python Exception class. The args attribute contains the 
-    object that was thrown from the JavaScript code. Per 
-    JavaScript convention, this may be any object. These 
-    objects are converted per the Data Conversion rules. Thus, 
-    the args attribute may contain a Python value like a str, 
-    or a JSObject value which maps into some JavaScript error 
-    value like an Error value.
-    """
-
-    #----------------------------------------------------------------
-    def __init__(self, value):
-        """ """
-        self.value = value
-        
-    #----------------------------------------------------------------
-    def __str__(self, value):
-        """ """
-        return repr(self.value)
-    
-#--------------------------------------------------------------------
 class JSContext:
     """Models a Context"""
 
@@ -441,6 +408,40 @@ class JSArray(JSObject):
     """Models a JavaScript array"""
     
     pass
+
+#--------------------------------------------------------------------
+class JSException(Exception):
+    """Models a JavaScript exception
+    
+    When JavaScript exceptions are caught by the API, they are 
+    converted Python JSException values, and then raised by the 
+    Python code. This class is a subclass of the JSObject class, 
+    as well as the base Python Exception class.
+    
+    Exception conditions not related to JavaScript invocation are 
+    handled by raising Python Exception values that generally will 
+    not need to be caught in well-tested usage of this package.
+    
+    This class is a subclass of the JSObject class as well as the 
+    base Python Exception class. The args attribute contains the 
+    object that was thrown from the JavaScript code. Per 
+    JavaScript convention, this may be any object. These 
+    objects are converted per the Data Conversion rules. Thus, 
+    the args attribute may contain a Python value like a str, 
+    or a JSObject value which maps into some JavaScript error 
+    value like an Error value.
+    """
+
+    #----------------------------------------------------------------
+    def __init__(self, value):
+        """ """
+        self.value = value
+        
+    #----------------------------------------------------------------
+    def __str__(self):
+        """ """
+        return repr(self.value)
+    
     
 #-------------------------------------------------------------------
 # simple typedefs

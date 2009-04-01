@@ -63,6 +63,7 @@ class Test(unittest.TestCase):
         try:
             ctx.checkScriptSyntax(script)
         except JSException, e:
+            self.assertEqual("'SyntaxError: Parse error'", str(e))
             threw = 1
             
         self.assertEqual(1, threw, "exception not thrown")
