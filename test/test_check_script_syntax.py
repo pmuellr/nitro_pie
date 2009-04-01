@@ -33,7 +33,7 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-import JavaScriptCore
+from Nitro import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
@@ -46,8 +46,7 @@ class Test(unittest.TestCase):
     def test_valid_syntax(self):
         script = "a = 1"
         
-        ctx = JavaScriptCore.JSContext()
-        ctx = ctx.retain()
+        ctx = JSContext.create()
         
         result = ctx.checkScriptSyntax(script)
         self.assertEqual(1, result)
@@ -58,13 +57,12 @@ class Test(unittest.TestCase):
     def test_invalid_syntax(self):
         script = "var 1a = 1"
         
-        ctx = JavaScriptCore.JSContext()
-        ctx = ctx.retain()
+        ctx = JSContext.create()
         
         threw  = 0
         try:
             ctx.checkScriptSyntax(script)
-        except JavaScriptCore.JSException, e:
+        except JSException, e:
             threw = 1
             
         self.assertEqual(1, threw, "exception not thrown")

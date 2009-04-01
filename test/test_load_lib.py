@@ -33,8 +33,7 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-import JavaScriptCore
-import JavaScriptCoreRaw
+from Nitro import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
@@ -44,8 +43,8 @@ class Test(unittest.TestCase):
     def tearDown(self): pass
 
     #---------------------------------------------------------------
-    def test_LoadLib(self):
-        JavaScriptCoreRaw.JSGarbageCollect()
+    def test_gc(self):
+        JSContext.gc()
                 
 #-------------------------------------------------------------------
 if __name__ == '__main__':
