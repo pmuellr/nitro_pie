@@ -35,10 +35,10 @@ from ctypes.util import find_library
 def string2jsString(string):
     """convert a string to a JSString"""
     if isinstance(string, str):
-        return _JSC.JSStringCreateWithUTF8CString(string)
+        return _JSStringCreateWithUTF8CString(string)
     
     elif isinstance(string, unicode):
-        return _JSC.JSStringCreateWithUTF8CString(string.encode("utf-8"))
+        return _JSStringCreateWithUTF8CString(string.encode("utf-8"))
         
     else:
         raise TypeError, "expecting a string"
@@ -46,11 +46,11 @@ def string2jsString(string):
 #--------------------------------------------------------------------
 def jsString2string(jsString):
     """convert a JSString to a string - always utf8"""
-    len = _JSC.JSStringGetMaximumUTF8CStringSize(jsString)
+    len = _JSStringGetMaximumUTF8CStringSize(jsString)
     
     result = c_char_p(" " * len)
 
-    _JSC.JSStringGetUTF8CString(jsString, result, len)
+    _JSStringGetUTF8CString(jsString, result, len)
     
     return result.value
 
@@ -88,8 +88,7 @@ class JSObject:
     #----------------------------------------------------------------
     def toString(self, jsContext):
         """ """
-        print "JSC.JSValueToStringCopy(%s, %s, None)" % (jsContext, self.value)
-        jsString = _JSC.JSValueToStringCopy(jsContext.ctx, self.value, None)
+        jsString = _JSValueToStringCopy(jsContext.ctx, self.value, None)
         return jsString2string(jsString)
     
     
@@ -102,13 +101,13 @@ class JSContext:
     @staticmethod
     def gc():
         """Run a garbage collect"""
-        _JSC.JSGarbageCollect(None)
+        _JSGarbageCollect(None)
     
     #----------------------------------------------------------------
     def __init__(self, ctx=None):
         """create a new context"""
         if None == ctx:
-            ctx = _JSC.JSGlobalContextCreate(None)
+            ctx = _JSGlobalContextCreate(None)
             
         self.ctx = ctx
         
@@ -124,7 +123,7 @@ class JSContext:
         """retain a context, returning a new one"""
         self.checkNotReleased()
         
-        ctx = _JSC.JSGlobalContextRetain(self.ctx)
+        ctx = _JSGlobalContextRetain(self.ctx)
         return JSContext(ctx=ctx)
         
     #----------------------------------------------------------------
@@ -132,7 +131,7 @@ class JSContext:
         """release a context"""
         self.checkNotReleased()
         
-        _JSC.JSGlobalContextRelease(self.ctx)
+        _JSGlobalContextRelease(self.ctx)
         self.ctx = None
 
     #----------------------------------------------------------------
@@ -150,14 +149,12 @@ class JSContext:
         if sourceURL: sourceURL = string2jsString(sourceURL)
 
         exception = _JSValueRef(None)
-        print "JSCheckScriptSyntax(%s, %s, %s, %d, %s)" % (str(self), jsString2string(script), str(sourceURL), startingLineNumber, str(exception))
-        result = _JSC.JSCheckScriptSyntax(self.ctx,
+        result = _JSCheckScriptSyntax(self.ctx,
             script,
             sourceURL,
             startingLineNumber,
             byref(exception)
             )
-        print "JSCheckScriptSyntax(): %d; exception: %s" % (result, str(exception))
         
         if exception.value: 
             jsObject = JSObject.fromJSValueRef(exception)
@@ -372,8 +369,46 @@ _JSClassDefinition._fields_ = [
     ("convertToType",     _JSObjectConvertToTypeCallback),
 ]
 
+#--------------------------------------------------------------------
+class JSLibrary:
+    """Manages the native JavaScriptCore library
+    
+    You can set the libraryPath and libraryName class variables
+    AFTER importing the module and BEFORE invoking any other
+    code in the module.  If the libraryPath variable is set,
+    it overrides the libraryName variable.
+    """
+
+    libraryName = "JavaScriptCore"
+    """Holds the short name of the native JavaScriptCore library
+    
+    If this variable is set, but the libraryPath variable is not
+    set, the library will be searched for in the system via a
+    system defined method."""
+    
+    libraryPath = None
+    """Holds the fully qualified name of the JavaScriptCore library"""
+    
+    _library    = None
+    
+    #----------------------------------------------------------------
+    @staticmethod
+    def getLibrary():
+        """Return the JavaScriptCore library as a CDLL or equivalent"""
+
+        if JSLibrary._library: return JSLibrary._library
+        
+        if not JSLibrary.libraryPath:
+            JSLibrary.libraryPath = find_library(JSLibrary.libraryName)
+            
+        if not JSLibrary.libraryPath:
+            raise Error, "unable to find the JavaScriptCore library"
+            
+        JSLibrary._library = CDLL(JSLibrary.libraryPath)
+        return JSLibrary._library
+
 #-------------------------------------------------------------------
-def _defineStaticMethod(name, resType, parms):
+def _defineFunction(name, resType, parms):
     """define a function named 'name'
     
     parms should be a sequence of sequences of:
@@ -384,27 +419,18 @@ def _defineStaticMethod(name, resType, parms):
     types      = [ptype                     for ptype, pflags, pname, pdefault in parms]
     paramFlags = [(pflags, pname, pdefault) for ptype, pflags, pname, pdefault in parms]
     
+    library   = JSLibrary.getLibrary()
     prototype = CFUNCTYPE(resType, *types)
-    function  = prototype((name, _JSC.lib), tuple(paramFlags))
+    function  = prototype((name, library), tuple(paramFlags))
     
-    setattr(_JSC, name, staticmethod(function))
-
-#-------------------------------------------------------------------
-class _JSC:
-    """native function container"""
-    
-    libName = find_library("JavaScriptCore")
-    if not libName: raise Error, "unable to find the JavaScriptCore library"
-    
-    lib = CDLL(libName)
-    if not lib: raise Error, "unable to load the JavaScriptCore library"
+    globals()["_" + name] = function
 
 #===================================================================
 # _JSBase.h
 #===================================================================
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSCheckScriptSyntax", c_int, (
+_defineFunction("JSCheckScriptSyntax", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSStringRef,         _PARM_IN,            "script",             None),
     (_JSStringRef,         _PARM_IN,            "sourceURL",          None),
@@ -413,7 +439,7 @@ _defineStaticMethod("JSCheckScriptSyntax", c_int, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSEvaluateScript", _JSValueRef, (
+_defineFunction("JSEvaluateScript", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSStringRef,         _PARM_IN,            "script",             None),
     (_JSObjectRef,         _PARM_IN,            "thisObject",         None),
@@ -423,7 +449,7 @@ _defineStaticMethod("JSEvaluateScript", _JSValueRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSGarbageCollect", None, (
+_defineFunction("JSGarbageCollect", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
 ))
 
@@ -432,22 +458,22 @@ _defineStaticMethod("JSGarbageCollect", None, (
 #===================================================================
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSContextGetGlobalObject", _JSObjectRef, (
+_defineFunction("JSContextGetGlobalObject", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSGlobalContextCreate", _JSGlobalContextRef, (
+_defineFunction("JSGlobalContextCreate", _JSGlobalContextRef, (
     (_JSClassRef,          _PARM_IN,            "globalObjectClass",  None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSGlobalContextRelease", None, (
+_defineFunction("JSGlobalContextRelease", None, (
     (_JSGlobalContextRef,  _PARM_IN,            "ctx",                None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSGlobalContextRetain", _JSGlobalContextRef, (
+_defineFunction("JSGlobalContextRetain", _JSGlobalContextRef, (
     (_JSGlobalContextRef,  _PARM_IN,            "ctx",                None), 
 ))
 
@@ -456,22 +482,22 @@ _defineStaticMethod("JSGlobalContextRetain", _JSGlobalContextRef, (
 #===================================================================
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSClassCreate", _JSClassRef, (
+_defineFunction("JSClassCreate", _JSClassRef, (
     (POINTER(_JSClassDefinition), _PARM_IN,     "definition",         None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSClassRelease", None, (
+_defineFunction("JSClassRelease", None, (
     (_JSClassRef,          _PARM_IN,            "jsClass",            None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSClassRetain", None, (
+_defineFunction("JSClassRetain", None, (
     (_JSClassRef,          _PARM_IN,            "jsClass",            None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectCallAsConstructor", _JSObjectRef, (
+_defineFunction("JSObjectCallAsConstructor", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (c_size_t,             _PARM_IN,            "argumentCount",      0), 
@@ -480,7 +506,7 @@ _defineStaticMethod("JSObjectCallAsConstructor", _JSObjectRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectCallAsFunction", _JSValueRef, (
+_defineFunction("JSObjectCallAsFunction", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (_JSObjectRef,         _PARM_IN,            "thisObject",         None), 
@@ -490,13 +516,13 @@ _defineStaticMethod("JSObjectCallAsFunction", _JSValueRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectCopyPropertyNames", _JSPropertyNameArrayRef, (
+_defineFunction("JSObjectCopyPropertyNames", _JSPropertyNameArrayRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectDeleteProperty", c_int, (
+_defineFunction("JSObjectDeleteProperty", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",              None), 
     (_JSObjectRef,         _PARM_IN,            "object",           None), 
     (_JSStringRef,         _PARM_IN,            "propertyName",     None), 
@@ -504,12 +530,12 @@ _defineStaticMethod("JSObjectDeleteProperty", c_int, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectGetPrivate", c_void_p, (
+_defineFunction("JSObjectGetPrivate", c_void_p, (
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectGetProperty", _JSValueRef, (
+_defineFunction("JSObjectGetProperty", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (_JSStringRef,         _PARM_IN,            "propertyName",       None), 
@@ -517,7 +543,7 @@ _defineStaticMethod("JSObjectGetProperty", _JSValueRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectGetPropertyAtIndex", _JSValueRef, (
+_defineFunction("JSObjectGetPropertyAtIndex", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (c_uint,               _PARM_IN,            "propertyIndex",      None), 
@@ -525,46 +551,46 @@ _defineStaticMethod("JSObjectGetPropertyAtIndex", _JSValueRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectGetPrototype", _JSValueRef, (
+_defineFunction("JSObjectGetPrototype", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectHasProperty", c_int, (
+_defineFunction("JSObjectHasProperty", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (_JSStringRef,         _PARM_IN,            "propertyName",       None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectIsConstructor", c_int, (
+_defineFunction("JSObjectIsConstructor", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectIsFunction", c_int, (
+_defineFunction("JSObjectIsFunction", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectMake", _JSObjectRef, (
+_defineFunction("JSObjectMake", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSClassRef,          _PARM_IN,            "jsClass",            None), 
     (c_void_p,             _PARM_IN,            "data",               None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectMakeConstructor", _JSObjectRef, (
+_defineFunction("JSObjectMakeConstructor", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSClassRef,          _PARM_IN,            "jsClass",            None), 
     (_JSObjectCallAsConstructorCallback, _PARM_IN, "callAsConstructor",   None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectMakeFunction", _JSObjectRef, (
+_defineFunction("JSObjectMakeFunction", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSStringRef,         _PARM_IN,            "name",               None), 
     (c_uint,               _PARM_IN,            "parameterCount",     None), 
@@ -576,20 +602,20 @@ _defineStaticMethod("JSObjectMakeFunction", _JSObjectRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectMakeFunctionWithCallback", _JSObjectRef, (
+_defineFunction("JSObjectMakeFunctionWithCallback", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSStringRef,         _PARM_IN,            "name",               None), 
     (_JSObjectCallAsFunctionCallback, _PARM_IN, "callAsFunction",     None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectSetPrivate", c_int, (
+_defineFunction("JSObjectSetPrivate", c_int, (
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (c_void_p,             _PARM_IN,            "data",               None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectSetProperty", None, (
+_defineFunction("JSObjectSetProperty", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (_JSStringRef,         _PARM_IN,            "propertyName",       None), 
@@ -599,7 +625,7 @@ _defineStaticMethod("JSObjectSetProperty", None, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectSetPropertyAtIndex", None, (
+_defineFunction("JSObjectSetPropertyAtIndex", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (c_uint,               _PARM_IN,            "propertyIndex",      0), 
@@ -608,36 +634,36 @@ _defineStaticMethod("JSObjectSetPropertyAtIndex", None, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSObjectSetPrototype", None, (
+_defineFunction("JSObjectSetPrototype", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSObjectRef,         _PARM_IN,            "object",             None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSPropertyNameAccumulatorAddName", None, (
+_defineFunction("JSPropertyNameAccumulatorAddName", None, (
     (_JSPropertyNameAccumulatorRef, _PARM_IN,   "accumulator",        None), 
     (_JSStringRef,         _PARM_IN,            "propertyName",       None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSPropertyNameArrayGetCount", c_size_t, (
+_defineFunction("JSPropertyNameArrayGetCount", c_size_t, (
     (_JSPropertyNameArrayRef, _PARM_IN,         "array",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSPropertyNameArrayGetNameAtIndex", _JSStringRef, (
+_defineFunction("JSPropertyNameArrayGetNameAtIndex", _JSStringRef, (
     (_JSPropertyNameArrayRef, _PARM_IN,         "array",              None), 
     (c_size_t,            _PARM_IN,            "index",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSPropertyNameArrayRelease", None, (
+_defineFunction("JSPropertyNameArrayRelease", None, (
     (_JSPropertyNameArrayRef, _PARM_IN,         "array",                None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSPropertyNameArrayRetain", _JSPropertyNameArrayRef, (
+_defineFunction("JSPropertyNameArrayRetain", _JSPropertyNameArrayRef, (
     (_JSPropertyNameArrayRef, _PARM_IN,         "array",                None), 
 ))
 
@@ -646,57 +672,57 @@ _defineStaticMethod("JSPropertyNameArrayRetain", _JSPropertyNameArrayRef, (
 #===================================================================
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringCreateWithCharacters", _JSStringRef, (
+_defineFunction("JSStringCreateWithCharacters", _JSStringRef, (
     (POINTER(_JSChar),     _PARM_IN,            "chars",               None), 
     (c_size_t,             _PARM_IN,            "numChars",            0), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringCreateWithUTF8CString", _JSStringRef, (
+_defineFunction("JSStringCreateWithUTF8CString", _JSStringRef, (
     (c_char_p,             _PARM_IN,            "string",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringGetCharactersPtr", POINTER(_JSChar), (
+_defineFunction("JSStringGetCharactersPtr", POINTER(_JSChar), (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringGetLength", c_int32, (
+_defineFunction("JSStringGetLength", c_int32, (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringGetMaximumUTF8CStringSize", c_size_t, (
+_defineFunction("JSStringGetMaximumUTF8CStringSize", c_size_t, (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringGetUTF8CString", c_size_t, (
+_defineFunction("JSStringGetUTF8CString", c_size_t, (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
     (c_char_p,             _PARM_IN,            "buffer",              None), 
     (c_size_t,             _PARM_IN,            "bufferSize",          0), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringIsEqual", c_int, (
+_defineFunction("JSStringIsEqual", c_int, (
     (_JSStringRef,         _PARM_IN,            "a",                   None), 
     (_JSStringRef,         _PARM_IN,            "b",                   None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringIsEqualToUTF8CString", c_int, (
+_defineFunction("JSStringIsEqualToUTF8CString", c_int, (
     (_JSStringRef,         _PARM_IN,            "a",                   None), 
     (c_char_p,             _PARM_IN,            "b",                   None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringRelease", None, (
+_defineFunction("JSStringRelease", None, (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSStringRetain", _JSStringRef, (
+_defineFunction("JSStringRetain", _JSStringRef, (
     (_JSStringRef,         _PARM_IN,            "string",              None), 
 ))
 
@@ -705,19 +731,19 @@ _defineStaticMethod("JSStringRetain", _JSStringRef, (
 #===================================================================
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueGetType", _JSType, (
+_defineFunction("JSValueGetType", _JSType, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsBoolean", c_int, (
+_defineFunction("JSValueIsBoolean", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsEqual", c_int, (
+_defineFunction("JSValueIsEqual", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "a",                  None), 
     (_JSValueRef,          _PARM_IN,            "b",                  None), 
@@ -725,7 +751,7 @@ _defineStaticMethod("JSValueIsEqual", c_int, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsInstanceOfConstructor", c_int, (
+_defineFunction("JSValueIsInstanceOfConstructor", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
     (_JSObjectRef,         _PARM_IN,            "constructor",        None), 
@@ -733,112 +759,112 @@ _defineStaticMethod("JSValueIsInstanceOfConstructor", c_int, (
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsNull", c_int, (
+_defineFunction("JSValueIsNull", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsNumber", c_int, (
+_defineFunction("JSValueIsNumber", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsObject", c_int, (
+_defineFunction("JSValueIsObject", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsObjectOfClass", c_int, (
+_defineFunction("JSValueIsObjectOfClass", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
     (_JSClassRef,          _PARM_IN,            "jsClass",            None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsStrictEqual", c_int, (
+_defineFunction("JSValueIsStrictEqual", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "a",                  None), 
     (_JSValueRef,          _PARM_IN,            "b",                  None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsString", c_int, (
+_defineFunction("JSValueIsString", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueIsUndefined", c_int, (
+_defineFunction("JSValueIsUndefined", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueMakeBoolean", _JSValueRef, (
+_defineFunction("JSValueMakeBoolean", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (c_int,                _PARM_IN,            "boolean",            0), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueMakeNull", _JSValueRef, (
+_defineFunction("JSValueMakeNull", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueMakeNumber", _JSValueRef, (
+_defineFunction("JSValueMakeNumber", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (c_double,             _PARM_IN,            "number",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueMakeString", _JSValueRef, (
+_defineFunction("JSValueMakeString", _JSValueRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSStringRef,         _PARM_IN,            "string",             None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueMakeUndefined", None, (
+_defineFunction("JSValueMakeUndefined", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueProtect", None, (
-    (_JSContextRef,        _PARM_IN,            "ctx",                None), 
-    (_JSValueRef,          _PARM_IN,            "value",              None), 
-))
-
-#-------------------------------------------------------------------
-_defineStaticMethod("JSValueToBoolean", c_int, (
+_defineFunction("JSValueProtect", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueToNumber", c_double, (
+_defineFunction("JSValueToBoolean", c_int, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
-    (POINTER(_JSValueRef), _PARM_IN,            "exception",          None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueToObject", _JSObjectRef, (
+_defineFunction("JSValueToNumber", c_double, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
     (POINTER(_JSValueRef), _PARM_IN,            "exception",          None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueToStringCopy", _JSStringRef, (
+_defineFunction("JSValueToObject", _JSObjectRef, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
     (POINTER(_JSValueRef), _PARM_IN,            "exception",          None), 
 ))
 
 #-------------------------------------------------------------------
-_defineStaticMethod("JSValueUnprotect", None, (
+_defineFunction("JSValueToStringCopy", _JSStringRef, (
+    (_JSContextRef,        _PARM_IN,            "ctx",                None), 
+    (_JSValueRef,          _PARM_IN,            "value",              None), 
+    (POINTER(_JSValueRef), _PARM_IN,            "exception",          None), 
+))
+
+#-------------------------------------------------------------------
+_defineFunction("JSValueUnprotect", None, (
     (_JSContextRef,        _PARM_IN,            "ctx",                None), 
     (_JSValueRef,          _PARM_IN,            "value",              None), 
 ))
