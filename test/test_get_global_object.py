@@ -56,42 +56,26 @@ class Test(unittest.TestCase):
     def tearDown(self): pass
 
     #---------------------------------------------------------------
-    def test_valid_syntax(self):
+    def test_get_global_object(self):
         script = "a = 1"
         
         ctx = JSContext()
         
-        result = ctx.checkScriptSyntax(script)
-        self.assertEqual(1, result)
+        globalObject = ctx.getGlobalObject()
+        aObject = globalObject.getProperty("a")
+        self.assertEqual(JSUndefined, aObject)
+        
+        result = ctx.evaluateScript(script)
+
+        globalObject = ctx.getGlobalObject()
+        aObject = globalObject.getProperty("a")
+        self.assertEqual(1, aObject)
+        
+        bObject = globalObject.getProperty("b")
+        self.assertEqual(JSUndefined, bObject)
         
         ctx.release()
-        
-    #---------------------------------------------------------------
-    def test_invalid_syntax(self):
-        script = "var 1a = 1"
-        
-        ctx = JSContext()
-        
-        threw  = 0
-        try:
-            result = ctx.checkScriptSyntax(script, "<testing>")
-        except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
-            
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
-            
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
-            
-            threw = 1
-            
-        self.assertEqual(1, threw, "exception not thrown")
-        
-        ctx.release()
+    
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ import os
 #-------------------------------------------------------------------
 # logger
 #-------------------------------------------------------------------
-_LOGGING = False
+_LOGGING = True
 def _log(message=""):
     if not _LOGGING: return
     
@@ -106,19 +106,16 @@ def _string2jsString(string):
 #--------------------------------------------------------------------
 def _jsString2string(jsString):
     """Convert a JSString to a string - always utf8"""
-    _log("%s" % str(jsString))
+    _log()
     
     if not jsString: return None
     if isinstance(jsString, str): return jsString
     
     len = _JSStringGetMaximumUTF8CStringSize(jsString)
-    _log("len: %d" % len)
     
     result = ctypes.c_char_p(" " * len)
-    _log("result: %s" % str(result))
 
     _JSStringGetUTF8CString(jsString, result, len)
-    _log("result: %s" % str(result))
     
     return result.value
 
@@ -211,37 +208,31 @@ class JSContext:
         @type  startingLineNumber: number
         @param startingLineNumber: the line number of the script
         """
+        _log()
         
-        _log("script=%s, sourceURL=%s, startingLineNumber=%d" % (repr(script), repr(sourceURL), startingLineNumber))
         self._checkAllocated()
         if not script: raise Exception, "script was None"
         
         script_js = _string2jsString(script)
-        _log("script_js: %s" % (script_js))
         
         if not sourceURL: 
             sourceURL_js = None
         else:
             sourceURL_js = _string2jsString(sourceURL)
-        _log("sourceURL_js: %s" % (script_js))
 
         exception = _JSValueRef(None)
-        _log("exception: %s" % (str(exception)))
-        _log("_JSCheckScriptSyntax(%s,%s,%s,%d,%s)" % (str(self), script, sourceURL, startingLineNumber, str(exception)))
         result = _JSCheckScriptSyntax(self.ctx,
             script_js,
             sourceURL_js,
             startingLineNumber,
             ctypes.byref(exception)
             )
-        _log("result: %s" % (str(result)))
         
         _JSStringRelease(script_js)
         if sourceURL_js: _JSStringRelease(sourceURL_js)
         
         if exception.value: 
             jsObject = JSObject(exception, self.ctx)
-            _log("raise %s, %s" % (str(JSException), str(jsObject)))
             raise JSException, jsObject
             
         return result == 1
@@ -266,7 +257,8 @@ class JSContext:
         @type  startingLineNumber: number
         @param startingLineNumber: the line number of the script
         """
-        _log("script=%s, sourceURL=%s, startingLineNumber=%d" % (repr(script), repr(sourceURL), startingLineNumber))
+        _log()
+
         self._checkAllocated()
         if not script: raise Exception, "script was None"
         
@@ -296,7 +288,7 @@ class JSContext:
         return JSObject(result, self.ctx)._toPython()
 
     #----------------------------------------------------------------
-    def getGlobalObject():
+    def getGlobalObject(self):
         """A veneer over JSContextGetGlobalObject()
         
         @rtype:   JSObject
@@ -305,19 +297,36 @@ class JSContext:
 
         self._checkAllocated()
         
-        return JSObject(JSContextGetGlobalObject(self.ctx), self.ctx)
+        return JSObject(_JSContextGetGlobalObject(self.ctx), self.ctx)
         
     #----------------------------------------------------------------
-    def makeConstructorWithCallback(name, callback):
+    def makeConstructorWithCallback(self, name, callback):
         """A veneer over JSObjectMakeConstructor()"""
         
         pass
         
     #----------------------------------------------------------------
-    def makeFunctionWithCallback(name, callback):
+    def makeFunctionWithCallback(self, name, callback):
         """A veneer over JSObjectMakeFunctionWithCallback()"""
         
-        pass
+        self._checkAllocated()
+        
+        def callback_py(ctx, function, thisObject, argCount, args_js, exception):
+            args = []
+            for i in xrange(0, argCount):
+                arg_js = args_js[i]
+                arg    = JSObject(arg_js, self.ctx)._toPython()
+                args.append(arg)
+            callback(ctx, function, thisObject, argCount, args, exception)
+            
+        name_js = _string2jsString(name)
+        callback_c = _JSObjectCallAsFunctionCallback(callback_py)
+        
+        result = _JSObjectMakeFunctionWithCallback(self.ctx, name_js, callback_c)
+        
+        _JSStringRelease(name_js)
+        
+        return JSObject(result, self.ctx)
 
     #----------------------------------------------------------------
     def makeBoolean(value):
@@ -364,6 +373,23 @@ class JSContext:
 #--------------------------------------------------------------------
 class JSObject:
     """Models a JavaScript object """
+
+    #--------------------------------------------------------------------
+    @staticmethod
+    def _fromPython(pyObject, ctx):
+        """Convert to a Python value"""
+
+        if not ctx: raise Exception, "ctx has been released"
+       
+        if None == pyObject:            return _JSValueMakeNull(ctx)
+        if JSUndefined == pyObject:     return _JSValueMakeUndefined(ctx)
+        if isinstance(pyObject, bool):  return _JSValueMakeBoolean(ctx, pyObject)
+        if isinstance(pyObject, int):   return _JSValueMakeNumber(ctx, pyObject)
+        if isinstance(pyObject, float): return _JSValueMakeNumber(ctx, pyObject)
+        if isinstance(pyObject, long):  return _JSValueMakeNumber(ctx, pyObject)
+        if isinstance(pyObject, str):   return _string2jsString(pyObject)
+        return pyObject
+
     
     #----------------------------------------------------------------
     def __init__(self, jsRef, ctx):
@@ -538,7 +564,6 @@ class JSObject:
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
 
-        _log("ctx: %s; ref: %s" % (ctx, self.jsRef))
         exception = _JSValueRef(None)
         jsString  = _JSValueToStringCopy(ctx, self.jsRef, ctypes.byref(exception))
         
@@ -563,6 +588,7 @@ class JSObject:
     #----------------------------------------------------------------
     def getPropertyNames(self, jsContext=None):
         """A veneer over JSObjectCopyPropertyNames()"""
+        _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
@@ -571,10 +597,8 @@ class JSObject:
         length = _JSPropertyNameArrayGetCount(jsPropertyNameArray)
         result = []
         
-        _log("length: %d" % length)
         for i in xrange(0,length):
             jsString = _JSPropertyNameArrayGetNameAtIndex(jsPropertyNameArray,i)
-            _log("jsString: %s" % str(jsString))
             result.append(_jsString2string(jsString))
             
         return result
@@ -588,15 +612,13 @@ class JSObject:
     #----------------------------------------------------------------
     def getProperty(self, propertyName, jsContext=None):
         """A veneer over JSObjectGetProperty()"""
-        
-        _log("self: %s; propertyName: %s" % (str(self), propertyName))
+        _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
 
         propertyName_js = _string2jsString(propertyName)
         exception       = _JSValueRef(None)
-        _log("propertyName_js: %s" % propertyName_js)
         jsResult        = _JSObjectGetProperty(ctx, self.jsRef, propertyName_js, ctypes.byref(exception))
         
         _JSStringRelease(propertyName_js)
@@ -604,18 +626,14 @@ class JSObject:
         if exception.value: 
             jsObject = JSObject(exception, self.ctx)
             raise JSException(jsObject)
-
-        _log("jsResult: %s" % jsResult)
             
         jsObject = JSObject(jsResult, ctx)
-        _log("jsObject: %s" % str(jsObject))
         
         return jsObject._toPython(jsContext)
 
     #----------------------------------------------------------------
     def getPropertyAtIndex(self, propertyIndex, jsContext=None):
         """A veneer over JSGetPropertyAtIndex()"""
-        
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -666,9 +684,23 @@ class JSObject:
     #----------------------------------------------------------------
     def setProperty(self, propertyName, value, attributes, jsContext=None):
         """A veneer over JSObjectSetProperty()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
 
+        propertyName_js = _string2jsString(propertyName)
+        exception       = _JSValueRef(None)
+        value_js        = JSObject._fromPython(value, ctx)
+        _log("_JSObjectSetProperty(%s,%s,%s,%s,%s)" % (str(ctx), str(self.jsRef), str(propertyName_js), str(value), str(attributes)))
+        result          = _JSObjectSetProperty(ctx, self.jsRef, propertyName_js, value.jsRef, attributes, ctypes.byref(exception))
+
+        _JSStringRelease(propertyName_js)
+
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+        
     #----------------------------------------------------------------
     def setPropertyAtIndex(self, propertyIndex, value, jsContext=None):
         """A veneer over JSObjectSetPropertyAtIndex()"""
@@ -713,7 +745,6 @@ class JSException(Exception):
     def __str__(self):
         """ """
         return repr(self.value)
-    
     
 #-------------------------------------------------------------------
 # simple typedefs

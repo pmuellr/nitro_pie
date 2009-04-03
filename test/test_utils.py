@@ -22,39 +22,42 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-# 
+#
 #-------------------------------------------------------------------
 
 import os
-import sys
-import unittest
-
-lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
-if lib_path not in sys.path: sys.path.insert(0, lib_path)
-
-suite  = unittest.TestSuite()
-result = unittest.TestResult()
-runner = unittest.TextTestRunner(verbosity=2)
+import inspect
 
 #-------------------------------------------------------------------
-def addTest(module):
-    suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(module))
+# logger
+#-------------------------------------------------------------------
+LOGGING = False
+
+def logging_on():  
+    global LOGGING
+    LOGGING = True
     
+def logging_off(): 
+    global LOGGING
+    LOGGING = False
+
+def log(message=""):
+    if not LOGGING: return
+    
+    caller = inspect.stack()[1]
+    (frame, filename, lineNumber, function, context, contextIndex) = caller
+    filename = os.path.basename(filename)
+    
+    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+
 #-------------------------------------------------------------------
+def get_js_props(jsObject):
 
-moduleNames = """
-test_jsstring
-test_load_lib
-test_check_script_syntax
-test_eval
-test_get_global_object
-test_get_type
-test_make_function_with_callback
-""".split()
+    names = jsObject.getPropertyNames()
+    
+    result = {}
+    for name in names:
+        val = jsObject.getProperty(name)
+        result[name] = val
 
-modules = [__import__(moduleName) for moduleName in moduleNames]
-
-for module in modules: addTest(module)
-
-runner.run(suite)
-
+    return result

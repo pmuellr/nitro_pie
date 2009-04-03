@@ -28,6 +28,8 @@
 import os
 import sys
 
+from test_utils import *
+
 lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
 if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
@@ -36,17 +38,16 @@ import unittest
 from Nitro import *
 
 #-------------------------------------------------------------------
-# logger
-#-------------------------------------------------------------------
-_LOGGING = True
-def _log(message):
-    if not _LOGGING: return
+def sum_callback(ctx, function, thisObject, argCount, args, exception):
+    log()
+    sum = 0
+    for arg in args:
+        sum += arg
+        log("sum: %d" % sum)
+        
+    return sum
     
-    caller = inspect.stack()[1]
-    (frame, filename, lineNumber, function, context, contextIndex) = caller
-    filename = os.path.basename(filename)
-    
-    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+logging_on()
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
@@ -56,40 +57,22 @@ class Test(unittest.TestCase):
     def tearDown(self): pass
 
     #---------------------------------------------------------------
-    def test_valid_syntax(self):
-        script = "a = 1"
-        
+    def test_function_as_callback(self):
         ctx = JSContext()
         
-        result = ctx.checkScriptSyntax(script)
-        self.assertEqual(1, result)
+        function = ctx.makeFunctionWithCallback("sum", sum_callback)
         
-        ctx.release()
+        globalObject = ctx.getGlobalObject()
+        globalObject.setProperty("sum", function, JSPropertyAttributeNone)
         
-    #---------------------------------------------------------------
-    def test_invalid_syntax(self):
-        script = "var 1a = 1"
-        
-        ctx = JSContext()
-        
-        threw  = 0
         try:
-            result = ctx.checkScriptSyntax(script, "<testing>")
+            result = ctx.evaluateScript("sum(1,2,3,4,5)")
         except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
+            log(get_js_props(e.value))
+            raise JSException, e
             
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
-            
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
-            
-            threw = 1
-            
-        self.assertEqual(1, threw, "exception not thrown")
+        log(result.get_js_props(e.value))
+        self.assertEquals(15, result)
         
         ctx.release()
         

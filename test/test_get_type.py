@@ -54,42 +54,26 @@ class Test(unittest.TestCase):
     #---------------------------------------------------------------
     def setUp(self): pass
     def tearDown(self): pass
-
+        
     #---------------------------------------------------------------
-    def test_valid_syntax(self):
-        script = "a = 1"
+    def test_object(self):
+        script = "({x:1, y:2})"
         
         ctx = JSContext()
         
-        result = ctx.checkScriptSyntax(script)
-        self.assertEqual(1, result)
+        result = ctx.evaluateScript(script)
+        self.assertEqual(JSTypeObject, result.getType())
         
         ctx.release()
         
     #---------------------------------------------------------------
-    def test_invalid_syntax(self):
-        script = "var 1a = 1"
+    def test_array(self):
+        script = "[4,5,6]"
         
         ctx = JSContext()
         
-        threw  = 0
-        try:
-            result = ctx.checkScriptSyntax(script, "<testing>")
-        except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
-            
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
-            
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
-            
-            threw = 1
-            
-        self.assertEqual(1, threw, "exception not thrown")
+        result = ctx.evaluateScript(script)
+        self.assertEqual(JSTypeObject, result.getType())
         
         ctx.release()
         
