@@ -35,6 +35,7 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 import test_jsstring
 import test_load_lib
 import test_check_script_syntax
+import test_eval
 
 suite  = unittest.TestSuite()
 result = unittest.TestResult()
@@ -48,6 +49,7 @@ def addTest(module):
 addTest(test_jsstring)
 addTest(test_load_lib)
 addTest(test_check_script_syntax)
+addTest(test_eval)
 
 runner.run(suite)
 

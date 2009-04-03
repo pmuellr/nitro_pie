@@ -249,7 +249,7 @@ class JSContext:
     #----------------------------------------------------------------
     def evaluateScript(self, 
         script, 
-        thisObject,
+        thisObject=None,
         sourceURL=None, 
         startingLineNumber=1
         ):
@@ -266,7 +266,34 @@ class JSContext:
         @type  startingLineNumber: number
         @param startingLineNumber: the line number of the script
         """
-        pass        
+        _log("script=%s, sourceURL=%s, startingLineNumber=%d" % (repr(script), repr(sourceURL), startingLineNumber))
+        self._checkAllocated()
+        if not script: raise Exception, "script was None"
+        
+        script_js = _string2jsString(script)
+        
+        if not sourceURL: 
+            sourceURL_js = None
+        else:
+            sourceURL_js = _string2jsString(sourceURL)
+
+        exception = _JSValueRef(None)
+        result = _JSEvaluateScript(self.ctx,
+            script_js,
+            thisObject,
+            sourceURL_js,
+            startingLineNumber,
+            ctypes.byref(exception)
+            )
+        
+        _JSStringRelease(script_js)
+        if sourceURL_js: _JSStringRelease(sourceURL_js)
+        
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException, jsObject
+            
+        return JSObject(result, self.ctx)._toPython()
 
     #----------------------------------------------------------------
     def getGlobalObject():
@@ -589,8 +616,21 @@ class JSObject:
     def getPropertyAtIndex(self, propertyIndex, jsContext=None):
         """A veneer over JSGetPropertyAtIndex()"""
         
-        self._checkAllocated()
+        _log()
+        
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
 
+        exception = _JSValueRef(None)
+        jsResult  = _JSObjectGetPropertyAtIndex(ctx, self.jsRef, propertyIndex, ctypes.byref(exception))
+        
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+
+        jsObject = JSObject(jsResult, ctx)
+        return jsObject._toPython(jsContext)
+ 
     #----------------------------------------------------------------
     def getPrototype(self, jsContext=None):
         """A veneer over JSObjectGetPrototype()"""
