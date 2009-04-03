@@ -28,33 +28,27 @@ __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
 __date__    = "2009-03-25"
 __version__ = "0.1"
 
-__all__ = """
-    JSException 
-    JSObject 
-    JSContext 
-    JSLibrary
-    JSUndefined
-    JSTypeUndefined
-    JSTypeNull
-    JSTypeBoolean
-    JSTypeNumber
-    JSTypeString
-    JSTypeObject
-    JSPropertyAttributeNone
-    JSPropertyAttributeReadOnly
-    JSPropertyAttributeDontEnum
-    JSPropertyAttributeDontDelete
-""".split()
-
-# from ctypes import *
-# from ctypes.util import find_library
-
 import ctypes
 import ctypes.util
+import inspect
+import os
 
-#--------------------------------------------------------------------
-JSUndefined = object()
-"""Used to represent instance of the undefined value in JavaScript"""
+#-------------------------------------------------------------------
+# logger
+#-------------------------------------------------------------------
+_LOGGING = False
+def _log(message=""):
+    if not _LOGGING: return
+    
+    caller = inspect.stack()[1]
+    (frame, filename, lineNumber, function, context, contextIndex) = caller
+    filename = os.path.basename(filename)
+    
+    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+
+#-------------------------------------------------------------------
+JSUndefined = {}
+"""Represents JavaScript's undefined value"""
 
 #-------------------------------------------------------------------
 JSTypeUndefined              = 0
@@ -88,24 +82,43 @@ JSPropertyAttributeDontDelete = 1 << 3
 
 #--------------------------------------------------------------------
 def _string2jsString(string):
-    """convert a string to a JSString"""
+    """Convert a string to a JSString
+    
+    The result will need to be release()'d when you're done with it.
+    
+    @rtype:         JSString
+    @return:        the JSString coverted from the Python string
+    @type  string:  str | unicode
+    @param string:  Python string to convert to a JSString
+    """
+    
+    if not string: return None
+    
     if isinstance(string, str):
         return _JSStringCreateWithUTF8CString(string)
     
     elif isinstance(string, unicode):
-        return _JSStringCreateWithUTF8CString(string.encode("utf-8"))
+        return _string2jsString(string.encode("utf-8"))
         
     else:
         raise TypeError, "expecting a string"
 
 #--------------------------------------------------------------------
 def _jsString2string(jsString):
-    """convert a JSString to a string - always utf8"""
+    """Convert a JSString to a string - always utf8"""
+    _log("%s" % str(jsString))
+    
+    if not jsString: return None
+    if isinstance(jsString, str): return jsString
+    
     len = _JSStringGetMaximumUTF8CStringSize(jsString)
+    _log("len: %d" % len)
     
     result = ctypes.c_char_p(" " * len)
+    _log("result: %s" % str(result))
 
     _JSStringGetUTF8CString(jsString, result, len)
+    _log("result: %s" % str(result))
     
     return result.value
 
@@ -117,29 +130,40 @@ class JSContext:
     @staticmethod
     def gc():
         """A veneer over JSGarbageCollect()"""
+        
         _JSGarbageCollect(None)
     
     #----------------------------------------------------------------
-    @staticmethod
-    def create():
-        """A veneer over JSGlobalContextCreate()
+    def __init__(self):
+        """A veneer over JSGlobalContextCreate().
         
         Creates a new JSContext which does not need to be
-        retain()'d, but does need to be release()'d
-        """
+        retain()'d, but does need to be release()'d.
         
-        ctx = _JSGlobalContextCreate(None)
-        return JSContext(ctx)
+        @rtype:  JSContext
+        @return: the new JSContext created
+        """
+            
+        self.ctx = _JSGlobalContextCreate(None)
+        self.ref = 1
+        
+        
+    #----------------------------------------------------------------
+    def __del__(self):
+        """Intended for internal use only."""
+        
+        while self.ctx: self.release()
     
     #----------------------------------------------------------------
-    def __init__(self, ctx):
-        """Intended for internal use only"""
-            
-        self.ctx = ctx
+    def __str__(self):
+        """Intended for internal use only."""
         
+        return "JSContext{ctx=%s, ref=%d}" % (str(self.ctx), self.ref)
+    
     #----------------------------------------------------------------
-    def _checkNotReleased(self):
-        """Check to make sure the context is not released"""
+    def _checkAllocated(self):
+        """Check to make sure the context is not released."""
+        
         if self.ctx: return
        
         raise Exception, "JSContext has been released"
@@ -150,19 +174,25 @@ class JSContext:
         
         Returns a new JSContext which should be release()'d
         when you are finished with it.
-        """
-        self._checkNotReleased()
         
-        ctx = _JSGlobalContextRetain(self.ctx)
-        return JSContext(ctx)
+        @rtype:  JSContext
+        @return: the new retained JSContext 
+        """
+        
+        self._checkAllocated()
+        _JSGlobalContextRelease(self.ctx)
+        self.ref += 1
+        return self
         
     #----------------------------------------------------------------
     def release(self):
         """A veneer over JSGlobalContextRelease()"""
-        self._checkNotReleased()
         
+        self._checkAllocated()
         _JSGlobalContextRelease(self.ctx)
-        self.ctx = None
+        self.ref -= 1
+        
+        if not self.ref: self.ctx = None
 
     #----------------------------------------------------------------
     def checkScriptSyntax(self, 
@@ -170,29 +200,51 @@ class JSContext:
         sourceURL=None, 
         startingLineNumber=1
         ):
-        """A veneer over JSCheckScriptSyntax()"""
+        """A veneer over JSCheckScriptSyntax()
+
+        @rtype:                    boolean
+        @return:                   whether the script is syntactically correct
+        @type  script:             str | unicode
+        @param script:             the source code for the script to check
+        @type  sourceURL:          str | unicode
+        @param sourceURL:          the URL of the source code
+        @type  startingLineNumber: number
+        @param startingLineNumber: the line number of the script
+        """
         
-        self._checkNotReleased()
+        _log("script=%s, sourceURL=%s, startingLineNumber=%d" % (repr(script), repr(sourceURL), startingLineNumber))
+        self._checkAllocated()
         if not script: raise Exception, "script was None"
         
-        script = _string2jsString(script)
-        if sourceURL: sourceURL = _string2jsString(sourceURL)
+        script_js = _string2jsString(script)
+        _log("script_js: %s" % (script_js))
+        
+        if not sourceURL: 
+            sourceURL_js = None
+        else:
+            sourceURL_js = _string2jsString(sourceURL)
+        _log("sourceURL_js: %s" % (script_js))
 
         exception = _JSValueRef(None)
+        _log("exception: %s" % (str(exception)))
+        _log("_JSCheckScriptSyntax(%s,%s,%s,%d,%s)" % (str(self), script, sourceURL, startingLineNumber, str(exception)))
         result = _JSCheckScriptSyntax(self.ctx,
-            script,
-            sourceURL,
+            script_js,
+            sourceURL_js,
             startingLineNumber,
             ctypes.byref(exception)
             )
+        _log("result: %s" % (str(result)))
+        
+        _JSStringRelease(script_js)
+        if sourceURL_js: _JSStringRelease(sourceURL_js)
         
         if exception.value: 
-            jsObject = JSObject._fromJSValueRef(exception)
-            string = jsObject.toString(self)
+            jsObject = JSObject(exception, self.ctx)
+            _log("raise %s, %s" % (str(JSException), str(jsObject)))
+            raise JSException, jsObject
             
-            raise JSException(string)
-            
-        return result
+        return result == 1
 
     #----------------------------------------------------------------
     def evaluateScript(self, 
@@ -201,15 +253,32 @@ class JSContext:
         sourceURL=None, 
         startingLineNumber=1
         ):
-        """A veneer over JSEvaluateScript()"""
+        """A veneer over JSEvaluateScript()
         
-        pass
+        @rtype:                    JSObject
+        @return:                   result of evaluating the script
+        @type  script:             str | unicode | JSString
+        @param script:             the source code for the script to check
+        @type  thisObject:         JSObject
+        @param thisObject:         the global object when executing the script
+        @type  sourceURL:          str | unicode | JSString
+        @param sourceURL:          the URL of the source code
+        @type  startingLineNumber: number
+        @param startingLineNumber: the line number of the script
+        """
+        pass        
 
     #----------------------------------------------------------------
     def getGlobalObject():
-        """A veneer over JSContextGetGlobalObject()"""
+        """A veneer over JSContextGetGlobalObject()
         
-        pass
+        @rtype:   JSObject
+        @return:  the global object for this context
+        """
+
+        self._checkAllocated()
+        
+        return JSObject(JSContextGetGlobalObject(self.ctx), self.ctx)
         
     #----------------------------------------------------------------
     def makeConstructorWithCallback(name, callback):
@@ -222,193 +291,356 @@ class JSContext:
         """A veneer over JSObjectMakeFunctionWithCallback()"""
         
         pass
+
+    #----------------------------------------------------------------
+    def makeBoolean(value):
+        """A veneer over JSValueMakeBoolean()"""
+        
+        self._checkAllocated()
+        
+        return JSObject(_JSValueMakeBoolean(self.ctx, value))
+        
+    #----------------------------------------------------------------
+    def makeNull():
+        """A veneer over JSValueMakeBoolean()"""
+        
+        self._checkAllocated()
+        
+        return JSObject(_JSValueMakeNull(self.ctx))
+        
+    #----------------------------------------------------------------
+    def makeNumber(value):
+        """A veneer over JSValueMakeBoolean()"""
+        
+        self._checkAllocated()
+        
+        return JSObject(_JSValueMakeNumber(self.ctx, value))
+        
+    #----------------------------------------------------------------
+    def makeString(value):
+        """A veneer over JSValueMakeBoolean()"""
+        
+        self._checkAllocated()
+
+        jsString = _string2jsString(value)
+        return JSObject(_JSValueMakeString(self.ctx, jsString))
+        
+    #----------------------------------------------------------------
+    def makeUndefined():
+        """A veneer over JSValueMakeBoolean()"""
+        
+        self._checkAllocated()
+        
+        return JSObject(_JSValueMakeUndefined(self.ctx))
+
         
 #--------------------------------------------------------------------
 class JSObject:
     """Models a JavaScript object """
     
     #----------------------------------------------------------------
-    @staticmethod
-    def _fromJSValueRef(jsValueRef):
-        """ """
-        result = JSObject()
-        result.value = jsValueRef
-        return result
-    
-    #----------------------------------------------------------------
-    def __init__(self):
-        """ """
-        pass
-    
-    #----------------------------------------------------------------
-    def getType(self, jsContext):
-        """A veneer over JSValueGetType()"""
+    def __init__(self, jsRef, ctx):
+        """Intended for internal use only."""
         
-        pass
+        self.ctx   = ctx
+        self.jsRef = jsRef
+        
+        _JSValueProtect(ctx, jsRef)
+    
+    #----------------------------------------------------------------
+    def __del__(self):
+        """Intended for internal use only."""
+        
+        _JSValueUnprotect(self.ctx, self.jsRef)
+        
+        self.ctx   = None
+        self.jsRef = None
+    
+    #----------------------------------------------------------------
+    def __str__(self):
+        """Intended for internal use only."""
+        
+        return "JSObject{ctx=%s, jsRef=%s}" % (str(self.ctx), str(self.jsRef)) 
+    
+    #----------------------------------------------------------------
+    def _checkAllocated(self, ctx):
+        """Check to make sure the context is not released."""
+        
+        if not ctx:        raise Exception, "ctx has been released"
+        if not self.jsRef: raise Exception, "jsRef has been released"
+    
+    #--------------------------------------------------------------------
+    def _toPython(self, jsContext=None):
+        """Convert to a Python value"""
+
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        if self.isNull(jsContext):      return None
+        if self.isUndefined(jsContext): return JSUndefined
+        if self.isBoolean(jsContext):   return self.toBoolean(jsContext)
+        if self.isNumber(jsContext):    return self.toNumber(jsContext)
+        if self.isString(jsContext):    return _jsString2string(self.toString())
+        return self
 
     #----------------------------------------------------------------
-    def isBoolean(self, jsContext):
+    def getType(self, jsContext=None):
+        """A veneer over JSValueGetType()"""
+        
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        return _JSValueGetType(ctx, self.jsRef)
+
+    #----------------------------------------------------------------
+    def isBoolean(self, jsContext=None):
         """A veneer over JSValueIsBoolean()"""
-        
-        pass
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsBoolean(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isNull(self, jsContext):
+    def isNull(self, jsContext=None):
         """A veneer over JSValueIsNull()"""
-        
-        pass
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsNull(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isNumber(self, jsContext):
+    def isNumber(self, jsContext=None):
         """A veneer over JSValueIsNumber()"""
-        
-        pass
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsNumber(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isObject(self, jsContext):
+    def isObject(self, jsContext=None):
         """A veneer over JSValueIsObject()"""
-        
-        pass
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsObject(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isString(self, jsContext):
+    def isString(self, jsContext=None):
         """A veneer over JSValueIsString()"""
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
         
-        pass
+        return 1 == _JSValueIsString(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isUndefined(self, jsContext):
+    def isUndefined(self, jsContext=None):
         """A veneer over JSValueIsUndefined()"""
-        
-        pass
+
+        _log()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsUndefined(ctx, self.jsRef)
         
     #----------------------------------------------------------------
-    def isEqual(self, jsContext, object):
+    def isEqual(self, jsObject, jsContext=None):
         """A veneer over JSValueIsEqual()"""
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
         
     #----------------------------------------------------------------
-    def isStrictEqual(self, jsContext, object):
+    def isStrictEqual(self, jsObject, jsContext=None):
         """A veneer over JSValueisStrictEqual()"""
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
         
     #----------------------------------------------------------------
-    def isInstanceOf(self, jsContext, constructor):
+    def isInstanceOf(self, jsObject, jsContext=None):
         """A veneer over JSValueIsInstanceOfConstructor()"""
         
-        pass
-        
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
     #----------------------------------------------------------------
-    def protect(self, jsContext):
-        """A veneer over JSVakueProtect()"""
+    def toBoolean(self, jsContext=None):
+        """A veneer over JSValueToBoolean()"""
+        _log()
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
         
+        return _JSValueToBoolean(ctx, self.jsRef)
+
     #----------------------------------------------------------------
-    def unprotect(self, jsContext):
-        """A veneer over JSValueUnprotect()"""
+    def toNumber(self, jsContext=None):
+        """A veneer over JSValueToBoolean()"""
+        _log()
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        exception = _JSValueRef(None)
         
+        result = _JSValueToNumber(ctx, self.jsRef, ctypes.byref(exception))
+
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+            
+        return result
+
     #----------------------------------------------------------------
-    def toString(self, jsContext):
+    def toString(self, jsContext=None):
         """A veneer over JSValueToStringCopy()"""
+        _log()
         
-        jsString = _JSValueToStringCopy(jsContext.ctx, self.value, None)
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        _log("ctx: %s; ref: %s" % (ctx, self.jsRef))
+        exception = _JSValueRef(None)
+        jsString  = _JSValueToStringCopy(ctx, self.jsRef, ctypes.byref(exception))
+        
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+
         return _jsString2string(jsString)
         
     #----------------------------------------------------------------
-    def callAsConstructor(self, jsContext, arguments):
+    def callAsConstructor(self, arguments, jsContext=None):
         """A veneer over JSObjectCallAsConstructor()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def callAsFunction(self, jsContext, thisObject, arguments):
+    def callAsFunction(self, thisObject, arguments, jsContext=None):
         """A veneer over JSObjectCallAsFunction()"""
         
-        pass
+        self._checkAllocated()
         
     #----------------------------------------------------------------
-    def getPropertyNames(self, jsContext):
+    def getPropertyNames(self, jsContext=None):
         """A veneer over JSObjectCopyPropertyNames()"""
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        jsPropertyNameArray = _JSObjectCopyPropertyNames(ctx, self.jsRef)
+        length = _JSPropertyNameArrayGetCount(jsPropertyNameArray)
+        result = []
+        
+        _log("length: %d" % length)
+        for i in xrange(0,length):
+            jsString = _JSPropertyNameArrayGetNameAtIndex(jsPropertyNameArray,i)
+            _log("jsString: %s" % str(jsString))
+            result.append(_jsString2string(jsString))
+            
+        return result
 
     #----------------------------------------------------------------
-    def deleteProperty(jself, sContext, propertyName):
+    def deleteProperty(self, jsString, jsContext=None):
         """A veneer over JSObjectDeleteProperty()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def getProperty(self, jsContext, propertyName):
+    def getProperty(self, propertyName, jsContext=None):
         """A veneer over JSObjectGetProperty()"""
         
-        pass
+        _log("self: %s; propertyName: %s" % (str(self), propertyName))
+        
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        propertyName_js = _string2jsString(propertyName)
+        exception       = _JSValueRef(None)
+        _log("propertyName_js: %s" % propertyName_js)
+        jsResult        = _JSObjectGetProperty(ctx, self.jsRef, propertyName_js, ctypes.byref(exception))
+        
+        _JSStringRelease(propertyName_js)
+        
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+
+        _log("jsResult: %s" % jsResult)
+            
+        jsObject = JSObject(jsResult, ctx)
+        _log("jsObject: %s" % str(jsObject))
+        
+        return jsObject._toPython(jsContext)
 
     #----------------------------------------------------------------
-    def getPropertyAtIndex(self, jsContext, propertyIndex):
+    def getPropertyAtIndex(self, propertyIndex, jsContext=None):
         """A veneer over JSGetPropertyAtIndex()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def getPrototype(self, jsContext):
+    def getPrototype(self, jsContext=None):
         """A veneer over JSObjectGetPrototype()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def hasProperty(self, jsContext, propertyName):
+    def hasProperty(self, propertyName, jsContext=None):
         """A veneer over JSObjectHasProperty()"""
         
-        pass
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        propertyName_js = _string2jsString(propertyName)
+        result          = _JSObjectHasProperty(ctx, self.jsRef, propertyName_js)
+        
+        _JSStringRelease(propertyName_js)
+        
+        return result == 1
 
     #----------------------------------------------------------------
-    def isConstructor(self, jsContext):
+    def isConstructor(self, jsContext=None):
         """A veneer over JSObjectIsConstructor()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def isFunction(self, jsContext):
+    def isFunction(self, jsContext=None):
         """A veneer over JSObjectIsFunction()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def setProperty(self, jsContext, propertyName, value, attributes):
+    def setProperty(self, propertyName, value, attributes, jsContext=None):
         """A veneer over JSObjectSetProperty()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def setPropertyAtIndex(self, jsContext, propertyIndex, value):
+    def setPropertyAtIndex(self, propertyIndex, value, jsContext=None):
         """A veneer over JSObjectSetPropertyAtIndex()"""
         
-        pass
+        self._checkAllocated()
 
     #----------------------------------------------------------------
-    def setPrototype(self, jsContext, value):
+    def setPrototype(self, value, jsContext=None):
         """A veneer over JSObjectSetPrototype()"""
         
-        pass
+        self._checkAllocated()
         
-#--------------------------------------------------------------------
-class JSFunction(JSObject):
-    """Models a JavaScript function"""
-    
-    pass
-
-#--------------------------------------------------------------------
-class JSArray(JSObject):
-    """Models a JavaScript array"""
-    
-    pass
-
 #--------------------------------------------------------------------
 class JSException(Exception):
     """Models a JavaScript exception

@@ -36,6 +36,19 @@ import unittest
 from Nitro import *
 
 #-------------------------------------------------------------------
+# logger
+#-------------------------------------------------------------------
+_LOGGING = True
+def _log(message):
+    if not _LOGGING: return
+    
+    caller = inspect.stack()[1]
+    (frame, filename, lineNumber, function, context, contextIndex) = caller
+    filename = os.path.basename(filename)
+    
+    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+
+#-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
@@ -46,7 +59,7 @@ class Test(unittest.TestCase):
     def test_valid_syntax(self):
         script = "a = 1"
         
-        ctx = JSContext.create()
+        ctx = JSContext()
         
         result = ctx.checkScriptSyntax(script)
         self.assertEqual(1, result)
@@ -57,13 +70,23 @@ class Test(unittest.TestCase):
     def test_invalid_syntax(self):
         script = "var 1a = 1"
         
-        ctx = JSContext.create()
+        ctx = JSContext()
         
         threw  = 0
         try:
-            ctx.checkScriptSyntax(script)
+            result = ctx.checkScriptSyntax(script, "<testing>")
         except JSException, e:
-            self.assertEqual("'SyntaxError: Parse error'", str(e))
+            e = e.value
+            props = e.getPropertyNames()
+            
+            name    = e.getProperty("name")    if e.hasProperty("name")    else None
+            message = e.getProperty("message") if e.hasProperty("message") else None
+            line    = e.getProperty("line")    if e.hasProperty("line")    else None
+            
+            self.assertEqual("SyntaxError", name)
+            self.assertEqual("Parse error", message)
+            self.assertEqual(1,             line)
+            
             threw = 1
             
         self.assertEqual(1, threw, "exception not thrown")

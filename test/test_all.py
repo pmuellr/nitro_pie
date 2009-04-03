@@ -38,7 +38,7 @@ import test_check_script_syntax
 
 suite  = unittest.TestSuite()
 result = unittest.TestResult()
-runner = unittest.TextTestRunner()
+runner = unittest.TextTestRunner(verbosity=2)
 
 #-------------------------------------------------------------------
 def addTest(module):
