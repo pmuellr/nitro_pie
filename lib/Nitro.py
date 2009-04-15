@@ -36,7 +36,7 @@ import os
 #-------------------------------------------------------------------
 # logger
 #-------------------------------------------------------------------
-_LOGGING = True
+_LOGGING = False
 def _log(message=""):
     if not _LOGGING: return
     
@@ -45,6 +45,10 @@ def _log(message=""):
     filename = os.path.basename(filename)
     
     print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+
+def NitroLogging(on):
+    global _LOGGING
+    _LOGGING = on
 
 #-------------------------------------------------------------------
 JSUndefined = {}
@@ -303,11 +307,13 @@ class JSContext:
     def makeConstructorWithCallback(self, name, callback):
         """A veneer over JSObjectMakeConstructor()"""
         
-        pass
+        _log()
         
     #----------------------------------------------------------------
     def makeFunctionWithCallback(self, name, callback):
         """A veneer over JSObjectMakeFunctionWithCallback()"""
+
+        _log()
         
         self._checkAllocated()
         
@@ -317,10 +323,15 @@ class JSContext:
                 arg_js = args_js[i]
                 arg    = JSObject(arg_js, self.ctx)._toPython()
                 args.append(arg)
-            callback(ctx, function, thisObject, argCount, args, exception)
+            _log("callback(%s,%s,%s,%s,%s,%s)" % (ctx, function, thisObject, argCount, args, exception))
+            result = callback(ctx, function, thisObject, argCount, args, exception)
+            _log("callback returns: %s" % result)
             
-        name_js = _string2jsString(name)
+            return JSObject._fromPython(result, self.ctx)
+            
         callback_c = _JSObjectCallAsFunctionCallback(callback_py)
+        
+        name_js = _string2jsString(name)
         
         result = _JSObjectMakeFunctionWithCallback(self.ctx, name_js, callback_c)
         

@@ -36,19 +36,6 @@ import unittest
 from Nitro import *
 
 #-------------------------------------------------------------------
-# logger
-#-------------------------------------------------------------------
-_LOGGING = True
-def _log(message):
-    if not _LOGGING: return
-    
-    caller = inspect.stack()[1]
-    (frame, filename, lineNumber, function, context, contextIndex) = caller
-    filename = os.path.basename(filename)
-    
-    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
-
-#-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------

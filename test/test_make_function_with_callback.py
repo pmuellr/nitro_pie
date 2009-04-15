@@ -43,11 +43,11 @@ def sum_callback(ctx, function, thisObject, argCount, args, exception):
     sum = 0
     for arg in args:
         sum += arg
-        log("sum: %d" % sum)
+        log("sum: %s" % str(sum))
+#        log("sum: %d" % sum)
         
+    log("returning: %s" % str(sum))
     return sum
-    
-logging_on()
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
@@ -58,9 +58,14 @@ class Test(unittest.TestCase):
 
     #---------------------------------------------------------------
     def test_function_as_callback(self):
+#        NitroLogging(True)
+#        logging(True)
+        print
+
         ctx = JSContext()
         
         function = ctx.makeFunctionWithCallback("sum", sum_callback)
+        log("function: %s" % function)
         
         globalObject = ctx.getGlobalObject()
         globalObject.setProperty("sum", function, JSPropertyAttributeNone)
@@ -71,7 +76,7 @@ class Test(unittest.TestCase):
             log(get_js_props(e.value))
             raise JSException, e
             
-        log(result.get_js_props(e.value))
+        log("result: %s" % result)
         self.assertEquals(15, result)
         
         ctx.release()

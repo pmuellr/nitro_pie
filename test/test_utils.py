@@ -33,14 +33,10 @@ import inspect
 #-------------------------------------------------------------------
 LOGGING = False
 
-def logging_on():  
+def logging(bool):  
     global LOGGING
-    LOGGING = True
+    LOGGING = bool
     
-def logging_off(): 
-    global LOGGING
-    LOGGING = False
-
 def log(message=""):
     if not LOGGING: return
     
