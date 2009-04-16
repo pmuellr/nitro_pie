@@ -24,6 +24,13 @@
 # SOFTWARE.
 #--------------------------------------------------------------------
 
+#--------------------------------------------------------------------
+#
+# A Python wrapper for JavaScriptCore (JSC).  JSC is documented here:
+#
+# http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/
+#--------------------------------------------------------------------
+
 __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
 __date__    = "2009-03-25"
 __version__ = "0.1"
@@ -51,7 +58,7 @@ def NitroLogging(on):
     _LOGGING = on
 
 #-------------------------------------------------------------------
-JSUndefined = {}
+JSUndefined = "{{undefined}}"
 """Represents JavaScript's undefined value"""
 
 #-------------------------------------------------------------------
@@ -387,6 +394,11 @@ class JSObject:
 
     #--------------------------------------------------------------------
     @staticmethod
+    def isJSObject(o):
+        return isinstance(o,JSObject)
+
+    #--------------------------------------------------------------------
+    @staticmethod
     def _fromPython(pyObject, ctx):
         """Convert to a Python value"""
 
@@ -395,9 +407,9 @@ class JSObject:
         if None == pyObject:            return _JSValueMakeNull(ctx)
         if JSUndefined == pyObject:     return _JSValueMakeUndefined(ctx)
         if isinstance(pyObject, bool):  return _JSValueMakeBoolean(ctx, pyObject)
-        if isinstance(pyObject, int):   return _JSValueMakeNumber(ctx, pyObject)
+        if isinstance(pyObject, int):   return _JSValueMakeNumber(ctx, pyObject * 1.0)
+        if isinstance(pyObject, long):  return _JSValueMakeNumber(ctx, pyObject * 1.0)
         if isinstance(pyObject, float): return _JSValueMakeNumber(ctx, pyObject)
-        if isinstance(pyObject, long):  return _JSValueMakeNumber(ctx, pyObject)
         if isinstance(pyObject, str):   return _string2jsString(pyObject)
         return pyObject
 
@@ -615,10 +627,25 @@ class JSObject:
         return result
 
     #----------------------------------------------------------------
-    def deleteProperty(self, jsString, jsContext=None):
+    def deleteProperty(self, propertyName, jsContext=None):
         """A veneer over JSObjectDeleteProperty()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        propertyName_js = _string2jsString(propertyName)
+        exception       = _JSValueRef(None)
+        result          = _JSObjectDeleteProperty(ctx, self.jsRef, propertyName_js, ctypes.byref(exception))
+                
+        _JSStringRelease(propertyName_js)
+        
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+        
+        _log("result: %d" % result)
+        return result == 1
 
     #----------------------------------------------------------------
     def getProperty(self, propertyName, jsContext=None):
@@ -669,6 +696,7 @@ class JSObject:
     #----------------------------------------------------------------
     def hasProperty(self, propertyName, jsContext=None):
         """A veneer over JSObjectHasProperty()"""
+        _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
@@ -693,7 +721,7 @@ class JSObject:
         self._checkAllocated()
 
     #----------------------------------------------------------------
-    def setProperty(self, propertyName, value, attributes, jsContext=None):
+    def setProperty(self, propertyName, value, attributes=JSPropertyAttributeNone, jsContext=None):
         """A veneer over JSObjectSetProperty()"""
         _log()
         
@@ -702,9 +730,13 @@ class JSObject:
 
         propertyName_js = _string2jsString(propertyName)
         exception       = _JSValueRef(None)
-        value_js        = JSObject._fromPython(value, ctx)
-        _log("_JSObjectSetProperty(%s,%s,%s,%s,%s)" % (str(ctx), str(self.jsRef), str(propertyName_js), str(value), str(attributes)))
-        result          = _JSObjectSetProperty(ctx, self.jsRef, propertyName_js, value.jsRef, attributes, ctypes.byref(exception))
+        
+        if JSObject.isJSObject(value):
+            value_js = value.jsRef
+        else:
+            value_js = JSObject._fromPython(value, ctx)
+            
+        _JSObjectSetProperty(ctx, self.jsRef, propertyName_js, value_js, attributes, ctypes.byref(exception))
 
         _JSStringRelease(propertyName_js)
 
@@ -715,8 +747,19 @@ class JSObject:
     #----------------------------------------------------------------
     def setPropertyAtIndex(self, propertyIndex, value, jsContext=None):
         """A veneer over JSObjectSetPropertyAtIndex()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+
+        exception       = _JSValueRef(None)
+        value_js        = JSObject._fromPython(value, ctx)
+        _JSObjectSetPropertyAtIndex(ctx, self.jsRef, propertyIndex, value_js, ctypes.byref(exception))
+
+        if exception.value: 
+            jsObject = JSObject(exception, self.ctx)
+            raise JSException(jsObject)
+        
 
     #----------------------------------------------------------------
     def setPrototype(self, value, jsContext=None):
@@ -1378,7 +1421,7 @@ _defineFunction("JSValueMakeString", _JSValueRef, (
 ))
 
 #-------------------------------------------------------------------
-_defineFunction("JSValueMakeUndefined", None, (
+_defineFunction("JSValueMakeUndefined", _JSValueRef, (
     (_JSContextRef,                    "ctx"), 
 ))
 

@@ -60,7 +60,7 @@ class Test(unittest.TestCase):
     def test_function_as_callback(self):
 #        NitroLogging(True)
 #        logging(True)
-        print
+#       print
 
         ctx = JSContext()
         
@@ -74,7 +74,8 @@ class Test(unittest.TestCase):
             result = ctx.evaluateScript("sum(1,2,3,4,5)")
         except JSException, e:
             log(get_js_props(e.value))
-            raise JSException, e
+            self.fail()
+#           raise JSException, e
             
         log("result: %s" % result)
         self.assertEquals(15, result)
@@ -83,5 +84,7 @@ class Test(unittest.TestCase):
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
+    NitroLogging(True)
+    logging(True)
     unittest.main()
 
