@@ -34,37 +34,55 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 import unittest
 
 from Nitro import *
+from test_utils import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self):
+        pass
         
+    def tearDown(self):
+        pass
+
     #---------------------------------------------------------------
-    def test_object(self):
-        script = "({x:1, y:2})"
-        
+    def test_get_set(self):
+
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
-        self.assertEqual(JSTypeObject, result.getType())
+        p1 = ctx.eval("({a: 111, b: 222})")
+        o  = ctx.eval("({})")
+
+        self.assertFalse(o.hasProperty("a"))
+        self.assertFalse(o.hasProperty("b"))
+        
+        o.setPrototype(p1)
+
+        self.assertTrue(o.hasProperty("a"))
+        self.assertTrue(o.hasProperty("b"))
+        
+        p2 = o.getPrototype()
+        
+        self.assertEquals(111, p1.getProperty("a"))
+        self.assertEquals(222, p1.getProperty("b"))
+
+        self.assertEquals(111,  o.getProperty("a"))
+        self.assertEquals(222,  o.getProperty("b"))
+
+        self.assertEquals(111, p2.getProperty("a"))
+        self.assertEquals(222, p2.getProperty("b"))
+
+        o.setProperty("a", 333)
+        self.assertEquals(333,  o.getProperty("a"))
+        self.assertEquals(111, p1.getProperty("a"))
         
         ctx.release()
-        
-    #---------------------------------------------------------------
-    def test_array(self):
-        script = "[4,5,6]"
-        
-        ctx = JSContext()
-        
-        result = ctx.evaluateScript(script)
-        self.assertEqual(JSTypeObject, result.getType())
-        
-        ctx.release()
+               
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
+    NitroLogging(True)
+    logging(True)
     unittest.main()
 

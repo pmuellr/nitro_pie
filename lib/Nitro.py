@@ -62,20 +62,6 @@ JSUndefined = "{{undefined}}"
 """Represents JavaScript's undefined value"""
 
 #-------------------------------------------------------------------
-JSTypeUndefined              = 0
-"""Indicates the type of a JavaScript value"""
-JSTypeNull                   = 1
-"""Indicates the type of a JavaScript value"""
-JSTypeBoolean                = 2
-"""Indicates the type of a JavaScript value"""
-JSTypeNumber                 = 3
-"""Indicates the type of a JavaScript value"""
-JSTypeString                 = 4
-"""Indicates the type of a JavaScript value"""
-JSTypeObject                 = 5
-"""Indicates the type of a JavaScript value"""
-
-#-------------------------------------------------------------------
 JSPropertyAttributeNone       = 0
 """Constant used when setting property values"""
 JSPropertyAttributeReadOnly   = 1 << 1
@@ -249,7 +235,7 @@ class JSContext:
         return result == 1
 
     #----------------------------------------------------------------
-    def evaluateScript(self, 
+    def eval(self, 
         script, 
         thisObject=None,
         sourceURL=None, 
@@ -404,14 +390,16 @@ class JSObject:
 
         if not ctx: raise Exception, "ctx has been released"
        
-        if None == pyObject:            return _JSValueMakeNull(ctx)
-        if JSUndefined == pyObject:     return _JSValueMakeUndefined(ctx)
-        if isinstance(pyObject, bool):  return _JSValueMakeBoolean(ctx, pyObject)
-        if isinstance(pyObject, int):   return _JSValueMakeNumber(ctx, pyObject * 1.0)
-        if isinstance(pyObject, long):  return _JSValueMakeNumber(ctx, pyObject * 1.0)
-        if isinstance(pyObject, float): return _JSValueMakeNumber(ctx, pyObject)
-        if isinstance(pyObject, str):   return _string2jsString(pyObject)
-        return pyObject
+        if None == pyObject:              return _JSValueMakeNull(ctx)
+        if JSUndefined == pyObject:       return _JSValueMakeUndefined(ctx)
+        if isinstance(pyObject, bool):    return _JSValueMakeBoolean(ctx, pyObject)
+        if isinstance(pyObject, int):     return _JSValueMakeNumber(ctx, pyObject * 1.0)
+        if isinstance(pyObject, long):    return _JSValueMakeNumber(ctx, pyObject * 1.0)
+        if isinstance(pyObject, float):   return _JSValueMakeNumber(ctx, pyObject)
+        if isinstance(pyObject, str):     return _string2jsString(pyObject)
+        if JSObject.isJSObject(pyObject): return pyObject.jsRef
+        
+        raise TypeError("unable to convert object from Python to JavaScript")
 
     
     #----------------------------------------------------------------
@@ -457,16 +445,8 @@ class JSObject:
         if self.isBoolean(jsContext):   return self.toBoolean(jsContext)
         if self.isNumber(jsContext):    return self.toNumber(jsContext)
         if self.isString(jsContext):    return _jsString2string(self.toString())
+        
         return self
-
-    #----------------------------------------------------------------
-    def getType(self, jsContext=None):
-        """A veneer over JSValueGetType()"""
-        
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-        
-        return _JSValueGetType(ctx, self.jsRef)
 
     #----------------------------------------------------------------
     def isBoolean(self, jsContext=None):
@@ -690,8 +670,14 @@ class JSObject:
     #----------------------------------------------------------------
     def getPrototype(self, jsContext=None):
         """A veneer over JSObjectGetPrototype()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        jsResult = _JSObjectGetPrototype(ctx, self.jsRef)
+        jsObject = JSObject(jsResult, ctx)
+        return jsObject._toPython(jsContext)
 
     #----------------------------------------------------------------
     def hasProperty(self, propertyName, jsContext=None):
@@ -731,10 +717,7 @@ class JSObject:
         propertyName_js = _string2jsString(propertyName)
         exception       = _JSValueRef(None)
         
-        if JSObject.isJSObject(value):
-            value_js = value.jsRef
-        else:
-            value_js = JSObject._fromPython(value, ctx)
+        value_js = JSObject._fromPython(value, ctx)
             
         _JSObjectSetProperty(ctx, self.jsRef, propertyName_js, value_js, attributes, ctypes.byref(exception))
 
@@ -764,8 +747,14 @@ class JSObject:
     #----------------------------------------------------------------
     def setPrototype(self, value, jsContext=None):
         """A veneer over JSObjectSetPrototype()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        value_js = JSObject._fromPython(value, ctx)
+        
+        _JSObjectSetPrototype(ctx, self.jsRef, value_js)
         
 #--------------------------------------------------------------------
 class JSException(Exception):

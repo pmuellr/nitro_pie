@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
         
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
         self.assertEqual(1, result)
         
         ctx.release()
@@ -59,7 +59,7 @@ class Test(unittest.TestCase):
         
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
         self.assertEqual(True, result)
         
         ctx.release()
@@ -70,7 +70,7 @@ class Test(unittest.TestCase):
         
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
         self.assertEqual("xyz", result)
         
         ctx.release()
@@ -81,7 +81,7 @@ class Test(unittest.TestCase):
         
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
         self.assertEqual(None, result)
         
         ctx.release()
@@ -92,7 +92,7 @@ class Test(unittest.TestCase):
         
         ctx = JSContext()
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
         self.assertEqual(JSUndefined, result)
         
         ctx.release()
@@ -104,7 +104,7 @@ class Test(unittest.TestCase):
         ctx = JSContext()
         
         try:
-            result = ctx.evaluateScript(script)
+            result = ctx.eval(script)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
@@ -132,7 +132,7 @@ class Test(unittest.TestCase):
         ctx = JSContext()
         
         try:
-            result = ctx.evaluateScript(script)
+            result = ctx.eval(script)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
@@ -164,7 +164,7 @@ class Test(unittest.TestCase):
         
         threw  = 0
         try:
-            result = ctx.evaluateScript(script)
+            result = ctx.eval(script)
         except JSException, e:
             e = e.value
             props = e.getPropertyNames()

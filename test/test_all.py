@@ -48,9 +48,9 @@ test_load_lib
 test_check_script_syntax
 test_eval
 test_get_global_object
-test_get_type
 test_make_function_with_callback
 test_properties
+test_prototype
 """.split()
 
 modules = [__import__(moduleName) for moduleName in moduleNames]

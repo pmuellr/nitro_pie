@@ -52,7 +52,7 @@ class Test(unittest.TestCase):
         aObject = globalObject.getProperty("a")
         self.assertEqual(JSUndefined, aObject)
         
-        result = ctx.evaluateScript(script)
+        result = ctx.eval(script)
 
         globalObject = ctx.getGlobalObject()
         aObject = globalObject.getProperty("a")

@@ -42,17 +42,16 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        pass
+        self.ctx = JSContext()
         
     def tearDown(self):
-        pass
+        self.ctx.release()
 
     #---------------------------------------------------------------
     def test_get_simple_properties(self):
-
-        ctx = JSContext()
+        ctx = self.ctx
         
-        result = ctx.evaluateScript("({a: 1, b: '2', c: true, d: null, e: undefined})")
+        result = ctx.eval("({a: 1, b: '2', c: true, d: null, e: undefined})")
         
         self.assertTrue(JSObject.isJSObject(result))
         
@@ -69,14 +68,11 @@ class Test(unittest.TestCase):
         self.assertEquals(None,        result.getProperty("d"))
         self.assertEquals(JSUndefined, result.getProperty("e"))
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_complex_property(self):
+        ctx = self.ctx
 
-        ctx = JSContext()
-        
-        result = ctx.evaluateScript("({a: {b: 2}})")
+        result = ctx.eval("({a: {b: 2}})")
         
         self.assertTrue(JSObject.isJSObject(result))
         
@@ -91,14 +87,11 @@ class Test(unittest.TestCase):
         
         self.assertEquals(2, result_inner.getProperty("b"))
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_delete_property(self):
+        ctx = self.ctx
 
-        ctx = JSContext()
-        
-        o = ctx.evaluateScript("({a: 1, b: 2, c: 3})")
+        o = ctx.eval("({a: 1, b: 2, c: 3})")
         self.assertTrue(JSObject.isJSObject(o))
         
         for prop in "a b c".split():
@@ -116,10 +109,9 @@ class Test(unittest.TestCase):
 
     #---------------------------------------------------------------
     def test_set_property(self):
+        ctx = self.ctx
 
-        ctx = JSContext()
-        
-        o = ctx.evaluateScript("({})")
+        o = ctx.eval("({})")
         self.assertTrue(JSObject.isJSObject(o))
 
         o.setProperty("a", 1)        
@@ -137,25 +129,47 @@ class Test(unittest.TestCase):
         self.assertEquals(False,       o.getProperty("d"))
         self.assertEquals(None,        o.getProperty("e"))
         self.assertEquals(JSUndefined, o.getProperty("f"))
+
+    #---------------------------------------------------------------
+    def test_set_property_compound(self):
+        ctx = self.ctx
+
+        p1 = ctx.eval("[1,2]")
+        p2 = ctx.eval("({a:11, b:22})")
+
+        o = ctx.eval("({})")
+        o.setProperty("x", p1)
+        o.setProperty("y", p2)
+
+        for prop in "x y".split():
+            self.assertTrue(o.hasProperty(prop))
         
+        t1 = o.getProperty("x")
+        t2 = o.getProperty("y")
+        
+        self.assertEquals(2, t1.getProperty("length"))
+        self.assertEquals(1, t1.getPropertyAtIndex(0))
+        self.assertEquals(2, t1.getPropertyAtIndex(1))
+
+        self.assertEquals(11, t2.getProperty("a"))
+        self.assertEquals(22, t2.getProperty("b"))
+
     #---------------------------------------------------------------
     def test_get_array_element(self):
+        ctx = self.ctx
 
-        ctx = JSContext()
-        
-        o = ctx.evaluateScript("[11,22,33]")
+        o = ctx.eval("[11,22,33]")
         self.assertTrue(JSObject.isJSObject(o))
 
         self.assertEquals(11, o.getPropertyAtIndex(0))
         self.assertEquals(22, o.getPropertyAtIndex(1))
         self.assertEquals(33, o.getPropertyAtIndex(2))
-        
+
     #---------------------------------------------------------------
     def test_set_array_element(self):
+        ctx = self.ctx
 
-        ctx = JSContext()
-        
-        o = ctx.evaluateScript("[]")
+        o = ctx.eval("[]")
         self.assertTrue(JSObject.isJSObject(o))
 
         o.setPropertyAtIndex(0, 1)        
@@ -171,6 +185,57 @@ class Test(unittest.TestCase):
         self.assertEquals(False,       o.getPropertyAtIndex(3))
         self.assertEquals(None,        o.getPropertyAtIndex(4))
         self.assertEquals(JSUndefined, o.getPropertyAtIndex(5))
+
+    #---------------------------------------------------------------
+    def test_attribute_read_only(self):
+        ctx = self.ctx
+
+        o = ctx.eval("({})")
+        
+        o.setProperty("x", 111, JSPropertyAttributeReadOnly)
+        self.assertEquals(111, o.getProperty("x"))
+        
+        o.setProperty("x", 222)
+        self.assertEquals(111, o.getProperty("x"))
+        
+        self.assertTrue("x" in o.getPropertyNames())
+        
+        o.deleteProperty("x")
+        self.assertTrue("x" not in o.getPropertyNames())
+        
+        
+    #---------------------------------------------------------------
+    def test_attribute_dont_enum(self):
+        ctx = self.ctx
+
+        o = ctx.eval("({})")
+        o.setProperty("x", 111, JSPropertyAttributeDontEnum)
+        self.assertEquals(111, o.getProperty("x"))
+        
+        o.setProperty("x", 222)
+        self.assertEquals(222, o.getProperty("x"))
+        
+        self.assertTrue("x" not in o.getPropertyNames())
+        
+        o.deleteProperty("x")
+        self.assertTrue("x" not in o.getPropertyNames())
+
+    #---------------------------------------------------------------
+    def test_attribute_dont_delete(self):
+        ctx = self.ctx
+
+        o = ctx.eval("({})")
+        o.setProperty("x", 111, JSPropertyAttributeDontDelete)
+        self.assertEquals(111, o.getProperty("x"))
+        
+        o.setProperty("x", 222)
+        self.assertEquals(222, o.getProperty("x"))
+        
+        self.assertTrue("x" in o.getPropertyNames())
+        
+        o.deleteProperty("x")
+        self.assertTrue("x" in o.getPropertyNames())
+
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

@@ -71,7 +71,7 @@ class Test(unittest.TestCase):
         globalObject.setProperty("sum", function, JSPropertyAttributeNone)
         
         try:
-            result = ctx.evaluateScript("sum(1,2,3,4,5)")
+            result = ctx.eval("sum(1,2,3,4,5)")
         except JSException, e:
             log(get_js_props(e.value))
             self.fail()
