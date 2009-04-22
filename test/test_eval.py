@@ -33,83 +33,74 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self):
+        self.ctx = JSContext()
+        
+    def tearDown(self):
+        self.ctx.release()
 
     #---------------------------------------------------------------
     def test_number(self):
-        script = "1"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "1"
         
         result = ctx.eval(script)
         self.assertEqual(1, result)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_boolean(self):
-        script = "true"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "true"
         
         result = ctx.eval(script)
         self.assertEqual(True, result)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_string(self):
-        script = "'xyz'"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "'xyz'"
         
         result = ctx.eval(script)
         self.assertEqual("xyz", result)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_null(self):
-        script = "null"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "null"
         
         result = ctx.eval(script)
         self.assertEqual(None, result)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_undefined(self):
-        script = "undefined"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "undefined"
         
         result = ctx.eval(script)
         self.assertEqual(JSUndefined, result)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_object(self):
-        script = "({x:1, y:2})"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "({x:1, y:2})"
         
         try:
             result = ctx.eval(script)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
-        
-        self.assertEqual(True, result.isObject())
         
         props = result.getPropertyNames()
         self.assertEqual(2, len(props))
@@ -123,21 +114,17 @@ class Test(unittest.TestCase):
         prop = result.getProperty("z")
         self.assertEqual(JSUndefined, prop)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_array(self):
-        script = "[4,5,6]"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "[4,5,6]"
         
         try:
             result = ctx.eval(script)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
-        
-        self.assertEqual(True, result.isObject())
         
         prop = result.getProperty("length")
         self.assertEqual(3, prop)
@@ -154,13 +141,11 @@ class Test(unittest.TestCase):
         prop = result.getPropertyAtIndex(3)
         self.assertEqual(JSUndefined, prop)
         
-        ctx.release()
-        
     #---------------------------------------------------------------
     def test_invalid_syntax(self):
-        script = "var 1a = 1"
+        ctx = self.ctx
         
-        ctx = JSContext()
+        script = "var 1a = 1"
         
         threw  = 0
         try:
@@ -180,8 +165,6 @@ class Test(unittest.TestCase):
             threw = 1
             
         self.assertEqual(1, threw, "exception not thrown")
-        
-        ctx.release()
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

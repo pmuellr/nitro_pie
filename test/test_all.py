@@ -43,7 +43,6 @@ def addTest(module):
 #-------------------------------------------------------------------
 
 moduleNames = """
-test_jsstring
 test_load_lib
 test_check_script_syntax
 test_eval
@@ -51,6 +50,8 @@ test_get_global_object
 test_make_function_with_callback
 test_properties
 test_prototype
+test_tos
+test_iss
 """.split()
 
 modules = [__import__(moduleName) for moduleName in moduleNames]

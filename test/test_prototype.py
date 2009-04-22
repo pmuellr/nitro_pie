@@ -33,7 +33,7 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 from test_utils import *
 
 #-------------------------------------------------------------------
@@ -41,15 +41,14 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        pass
+        self.ctx = JSContext()
         
     def tearDown(self):
-        pass
+        self.ctx.release()
 
     #---------------------------------------------------------------
     def test_get_set(self):
-
-        ctx = JSContext()
+        ctx = self.ctx
         
         p1 = ctx.eval("({a: 111, b: 222})")
         o  = ctx.eval("({})")
@@ -76,9 +75,6 @@ class Test(unittest.TestCase):
         o.setProperty("a", 333)
         self.assertEquals(333,  o.getProperty("a"))
         self.assertEquals(111, p1.getProperty("a"))
-        
-        ctx.release()
-               
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

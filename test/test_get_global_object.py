@@ -33,17 +33,22 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self): 
+        self.ctx = JSContext()
+        
+    def tearDown(self): 
+        self.ctx.release()
 
     #---------------------------------------------------------------
     def test_get_global_object(self):
+        ctx = self.ctx
+        
         script = "a = 1"
         
         ctx = JSContext()
@@ -60,9 +65,6 @@ class Test(unittest.TestCase):
         
         bObject = globalObject.getProperty("b")
         self.assertEqual(JSUndefined, bObject)
-        
-        ctx.release()
-    
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

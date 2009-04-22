@@ -124,11 +124,12 @@ class JSContext:
     @staticmethod
     def gc():
         """A veneer over JSGarbageCollect()"""
+        _log()
         
         _JSGarbageCollect(None)
     
     #----------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, ctx=None):
         """A veneer over JSGlobalContextCreate().
         
         Creates a new JSContext which does not need to be
@@ -137,14 +138,20 @@ class JSContext:
         @rtype:  JSContext
         @return: the new JSContext created
         """
+        _log("JSContext() - ctx: %s" % (str(ctx)))
             
-        self.ctx = _JSGlobalContextCreate(None)
-        self.ref = 1
-        
+        if None == ctx:
+            self.ctx = _JSGlobalContextCreate(None)
+            self.ref = 1
+            return
+            
+        self.ctx = ctx
+        self.ref = 0
         
     #----------------------------------------------------------------
     def __del__(self):
         """Intended for internal use only."""
+        _log("JSContext() - ctx: %s" % (str(self.ctx)))
         
         while self.ctx: self.release()
     
@@ -157,6 +164,7 @@ class JSContext:
     #----------------------------------------------------------------
     def _checkAllocated(self):
         """Check to make sure the context is not released."""
+        _log()
         
         if self.ctx: return
        
@@ -172,6 +180,7 @@ class JSContext:
         @rtype:  JSContext
         @return: the new retained JSContext 
         """
+        _log()
         
         self._checkAllocated()
         _JSGlobalContextRelease(self.ctx)
@@ -181,6 +190,11 @@ class JSContext:
     #----------------------------------------------------------------
     def release(self):
         """A veneer over JSGlobalContextRelease()"""
+        _log()
+        
+        if self.ref <= 0: 
+            self.ctx = None
+            return
         
         self._checkAllocated()
         _JSGlobalContextRelease(self.ctx)
@@ -245,11 +259,11 @@ class JSContext:
         
         @rtype:                    JSObject
         @return:                   result of evaluating the script
-        @type  script:             str | unicode | JSString
+        @type  script:             str | unicode
         @param script:             the source code for the script to check
         @type  thisObject:         JSObject
         @param thisObject:         the global object when executing the script
-        @type  sourceURL:          str | unicode | JSString
+        @type  sourceURL:          str | unicode
         @param sourceURL:          the URL of the source code
         @type  startingLineNumber: number
         @param startingLineNumber: the line number of the script
@@ -291,21 +305,58 @@ class JSContext:
         @rtype:   JSObject
         @return:  the global object for this context
         """
+        _log()
 
         self._checkAllocated()
         
         return JSObject(_JSContextGetGlobalObject(self.ctx), self.ctx)
         
     #----------------------------------------------------------------
-    def makeConstructorWithCallback(self, name, callback):
-        """A veneer over JSObjectMakeConstructor()"""
+    def makeConstructorWithCallback(self, callback):
+        """A veneer over JSObjectMakeConstructor()
         
+        @rtype:           JSObject
+        @return:          the constructor created
+        @type  callback:  function
+        @param callback:  the python function to use as the JavaScript constructor
+        """
         _log()
+
+        self._checkAllocated()
+        
+        def callback_py(ctx, function, argCount, args_js, exception):
+            args = []
+            for i in xrange(0, argCount):
+                arg_js = args_js[i]
+                arg    = JSObject(arg_js, ctx)._toPython()
+                args.append(arg)
+            _log("callback(%s,%s,%s,%s,%s)" % (ctx, function, argCount, args, exception))
+            jsContext  = JSContext(ctx=ctx)
+            jsFunction = JSObject(function, ctx)
+            result = callback(jsContext, jsFunction, args)
+            _log("callback returns: %s" % result)
+            
+            return JSObject._fromPython(result, self.ctx)
+            
+        callback_c = _JSObjectCallAsConstructorCallback(callback_py)
+        _log()
+        
+        result = _JSObjectMakeConstructor(self.ctx, None, callback_c)
+        _log()
+        
+        return JSObject(result, self.ctx)
         
     #----------------------------------------------------------------
     def makeFunctionWithCallback(self, name, callback):
-        """A veneer over JSObjectMakeFunctionWithCallback()"""
-
+        """A veneer over JSObjectMakeFunctionWithCallback()
+        
+        @rtype:           JSObject
+        @return:          the constructor created
+        @type  name:      str | unicode 
+        @param name:      the name of the function
+        @type  callback:  function
+        @param callback:  the python function to use as the JavaScript function
+        """
         _log()
         
         self._checkAllocated()
@@ -314,10 +365,13 @@ class JSContext:
             args = []
             for i in xrange(0, argCount):
                 arg_js = args_js[i]
-                arg    = JSObject(arg_js, self.ctx)._toPython()
+                arg    = JSObject(arg_js, ctx)._toPython()
                 args.append(arg)
             _log("callback(%s,%s,%s,%s,%s,%s)" % (ctx, function, thisObject, argCount, args, exception))
-            result = callback(ctx, function, thisObject, argCount, args, exception)
+            jsContext  = JSContext(ctx=ctx)
+            jsFunction = JSObject(function, ctx)
+            jsThis     = JSObject(thisObject, ctx)
+            result = callback(jsContext, jsFunction, jsThis, args)
             _log("callback returns: %s" % result)
             
             return JSObject._fromPython(result, self.ctx)
@@ -333,7 +387,7 @@ class JSContext:
         return JSObject(result, self.ctx)
 
     #----------------------------------------------------------------
-    def makeBoolean(value):
+    def _makeBoolean(value):
         """A veneer over JSValueMakeBoolean()"""
         
         self._checkAllocated()
@@ -341,7 +395,7 @@ class JSContext:
         return JSObject(_JSValueMakeBoolean(self.ctx, value))
         
     #----------------------------------------------------------------
-    def makeNull():
+    def _makeNull():
         """A veneer over JSValueMakeBoolean()"""
         
         self._checkAllocated()
@@ -349,7 +403,7 @@ class JSContext:
         return JSObject(_JSValueMakeNull(self.ctx))
         
     #----------------------------------------------------------------
-    def makeNumber(value):
+    def _makeNumber(value):
         """A veneer over JSValueMakeBoolean()"""
         
         self._checkAllocated()
@@ -357,7 +411,7 @@ class JSContext:
         return JSObject(_JSValueMakeNumber(self.ctx, value))
         
     #----------------------------------------------------------------
-    def makeString(value):
+    def _makeString(value):
         """A veneer over JSValueMakeBoolean()"""
         
         self._checkAllocated()
@@ -366,7 +420,7 @@ class JSContext:
         return JSObject(_JSValueMakeString(self.ctx, jsString))
         
     #----------------------------------------------------------------
-    def makeUndefined():
+    def _makeUndefined():
         """A veneer over JSValueMakeBoolean()"""
         
         self._checkAllocated()
@@ -405,6 +459,7 @@ class JSObject:
     #----------------------------------------------------------------
     def __init__(self, jsRef, ctx):
         """Intended for internal use only."""
+        _log("JSObject() - ctx: %s; jsRef: %s" % (str(ctx), str(jsRef)))
         
         self.ctx   = ctx
         self.jsRef = jsRef
@@ -414,6 +469,7 @@ class JSObject:
     #----------------------------------------------------------------
     def __del__(self):
         """Intended for internal use only."""
+        _log("JSObject() - ctx: %s; jsRef: %s" % (str(self.ctx), str(self.jsRef)))
         
         _JSValueUnprotect(self.ctx, self.jsRef)
         
@@ -440,81 +496,22 @@ class JSObject:
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
         
-        if self.isNull(jsContext):      return None
-        if self.isUndefined(jsContext): return JSUndefined
-        if self.isBoolean(jsContext):   return self.toBoolean(jsContext)
-        if self.isNumber(jsContext):    return self.toNumber(jsContext)
-        if self.isString(jsContext):    return _jsString2string(self.toString())
+        if _JSValueIsNull(ctx, self.jsRef):      return None
+        if _JSValueIsUndefined(ctx, self.jsRef): return JSUndefined
+        if _JSValueIsBoolean(ctx, self.jsRef):   return self.toBoolean(jsContext)
+        if _JSValueIsNumber(ctx, self.jsRef):    return self.toNumber(jsContext)
+        if _JSValueIsString(ctx, self.jsRef):    return _jsString2string(self.toString())
         
         return self
 
-    #----------------------------------------------------------------
-    def isBoolean(self, jsContext=None):
-        """A veneer over JSValueIsBoolean()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-
-        return 1 == _JSValueIsBoolean(ctx, self.jsRef)
-        
-    #----------------------------------------------------------------
-    def isNull(self, jsContext=None):
-        """A veneer over JSValueIsNull()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-
-        return 1 == _JSValueIsNull(ctx, self.jsRef)
-        
-    #----------------------------------------------------------------
-    def isNumber(self, jsContext=None):
-        """A veneer over JSValueIsNumber()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-
-        return 1 == _JSValueIsNumber(ctx, self.jsRef)
-        
-    #----------------------------------------------------------------
-    def isObject(self, jsContext=None):
-        """A veneer over JSValueIsObject()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-
-        return 1 == _JSValueIsObject(ctx, self.jsRef)
-        
-    #----------------------------------------------------------------
-    def isString(self, jsContext=None):
-        """A veneer over JSValueIsString()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-        
-        return 1 == _JSValueIsString(ctx, self.jsRef)
-        
-    #----------------------------------------------------------------
-    def isUndefined(self, jsContext=None):
-        """A veneer over JSValueIsUndefined()"""
-
-        _log()
-        ctx = jsContext.ctx if jsContext else self.ctx
-        self._checkAllocated(ctx)
-
-        return 1 == _JSValueIsUndefined(ctx, self.jsRef)
-        
     #----------------------------------------------------------------
     def isEqual(self, jsObject, jsContext=None):
         """A veneer over JSValueIsEqual()"""
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
-
+        
+        return 1 == _JSValueIsEqual(ctx, self.jsRef, JSObject._fromPython(jsObject, ctx), None)
         
     #----------------------------------------------------------------
     def isStrictEqual(self, jsObject, jsContext=None):
@@ -523,13 +520,16 @@ class JSObject:
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
 
-        
+        return 1 == _JSValueIsStrictEqual(ctx, self.jsRef, JSObject._fromPython(jsObject, ctx))
+
     #----------------------------------------------------------------
-    def isInstanceOf(self, jsObject, jsContext=None):
+    def isInstanceOf(self, jsConstructor, jsContext=None):
         """A veneer over JSValueIsInstanceOfConstructor()"""
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
+
+        return 1 == _JSValueIsInstanceOfConstructor(ctx, self.jsRef, JSObject._fromPython(jsConstructor, ctx), None)
 
     #----------------------------------------------------------------
     def toBoolean(self, jsContext=None):
@@ -575,18 +575,6 @@ class JSObject:
             raise JSException(jsObject)
 
         return _jsString2string(jsString)
-        
-    #----------------------------------------------------------------
-    def callAsConstructor(self, arguments, jsContext=None):
-        """A veneer over JSObjectCallAsConstructor()"""
-        
-        self._checkAllocated()
-
-    #----------------------------------------------------------------
-    def callAsFunction(self, thisObject, arguments, jsContext=None):
-        """A veneer over JSObjectCallAsFunction()"""
-        
-        self._checkAllocated()
         
     #----------------------------------------------------------------
     def getPropertyNames(self, jsContext=None):
@@ -697,14 +685,22 @@ class JSObject:
     #----------------------------------------------------------------
     def isConstructor(self, jsContext=None):
         """A veneer over JSObjectIsConstructor()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        return 1 == _JSObjectIsConstructor(ctx, self.jsRef)
 
     #----------------------------------------------------------------
     def isFunction(self, jsContext=None):
         """A veneer over JSObjectIsFunction()"""
+        _log()
         
-        self._checkAllocated()
+        ctx = jsContext.ctx if jsContext else self.ctx
+        self._checkAllocated(ctx)
+        
+        return 1 == _JSObjectIsFunction(ctx, self.jsRef)
 
     #----------------------------------------------------------------
     def setProperty(self, propertyName, value, attributes=JSPropertyAttributeNone, jsContext=None):
@@ -769,11 +765,11 @@ class JSException(Exception):
     handled by raising Python Exception values that generally will 
     not need to be caught in well-tested usage of this package.
     
-    The value attribute of this object contains the 
+    The C{value} attribute of this object contains the 
     object that was thrown from the JavaScript code. Per 
     JavaScript convention, this may be any object. These 
     objects are converted per the Data Conversion rules. Thus, 
-    the args attribute may contain a Python value like a str, 
+    the C{value} attribute may contain a Python value like a str, 
     or a JSObject value which maps into some JavaScript error 
     value like an Error value.
     """

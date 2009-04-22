@@ -33,9 +33,8 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 from test_utils import *
-
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):

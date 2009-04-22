@@ -2,7 +2,7 @@
 
 <!-- ====================================================== -->
 <head>
-<title id="head_title">pyJSC - Python interface for JavaScriptCore</title>
+<title id="head_title">nitro_pie - Python interface for JavaScriptCore</title>
 <style type="text/css">
 
 /*-----------------------------------------------------------------*/
@@ -196,7 +196,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
-<li>2009-03-26 - Patrick Mueller - initial write-up</li>
+<li>2009-04-21 - Patrick Mueller - initial write-up</li>
 </ul>
 
 <!-- ====================================================== -->
@@ -209,34 +209,32 @@ function body_onload() {
 <!-- ====================================================== -->
 <h2>Introduction</h2>
 
-<p>The <code>pyJSC</code> package implements a Python module
-named <code>Nitro</code> which is a Python version
-of the C API for</p>
+<p>The <code>nitro_pie</code> package implements a Python module
+named <code>nitro_pie</code> which is a Python version
+of the C API for
 <a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>,
 which is the JavaScript engine shipped with 
 <a href="http://webkit.org/">WebKit</a>.
 You may want to get familiarity with this framework before using
-this package in anger.
-</p>
+this package in anger.  In lieu of that, examine the test cases.
 
-<p>Note that the <code>Nitro</code> module does not currently expose
-all of the WebKit APIs.  In particular, things related to
-<code>JSClass</code> and creating native constructors
-is not implemented.</p>
+<p>Note that the <code>nitro_pie</code> module does not currently expose
+all of the WebKit APIs.
 
 <!-- ====================================================== -->
 <h2>Installation</h2>
 
-<p>The <code>Nitro</code> module is implemented in a single file,
-<code>Nitro.py</code>.  You can just copy this file into
+<p>The <code>nitro_pie</code> module is implemented in a single file,
+<code>nitro_pie.py</code>.  You can just copy this file into
 an appropriate directory to use with other Python code.
-</p>
+
 
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
 module, which is included in Python distributions starting with version 2.5.
 This module has currently only be tested or used on Mac OS X, and will likely
-need some changes to run on other operating systems.</p>
+need some changes to run on other operating systems.  Along with finding/building
+a copy of JavaScriptCore for those operating systems.
 
 <!-- ====================================================== -->
 <h2>Usage</h2>
@@ -245,7 +243,7 @@ need some changes to run on other operating systems.</p>
 <h2>Data conversions</h2>
 
 <p>Where appropriate, data types are automatically converted between
-JavaScript and Python automagically.  Conversions include:</p>
+JavaScript and Python automagically.  Conversions include:
 
 <table cellspacing="0" cellpadding="3" frame="border" rules="all">
 
@@ -265,8 +263,7 @@ JavaScript and Python automagically.  Conversions include:</p>
 <td><code>JSUndefined</code></td>
 <td><code>undefined</code></td>
 <td>one-to-one conversion - <code>JSUndefined</code> is a property
-provided by this module,
-and is an instance of the <code>JSObject</code> class.</td>
+provided by this module.</td>
 </tr>
 
 <tr>
@@ -288,7 +285,7 @@ and is an instance of the <code>JSObject</code> class.</td>
 Python <code>int</code>, <code>float</code> and <code>long</code>
 values will be converted into JavaScript <code>Number</code> values.
 JavaScript <code>Number</code> values will be converted into 
-Python <code>double</code> values.
+Python <code>float</code> values.
 </td>
 </tr>
 
@@ -309,12 +306,10 @@ Python <code>str</code> values, encoded as UTF-8.
 <td><code>JSObject</code></td>
 <td><code>Object</code> (everything else)</td>
 <td>
-Python <code>JSObject</code>
-values will be converted to bare JavaScript <code>Object</code>
-values (like JSON objects) by recursively copying properties.
-JavaScript values not otherwise automagically converted to
-other types will be converted to <code>JSObject</code>
-values.
+JavaScript objects not otherwise converted by the rules above
+will be converted to instances of <code>JSObject</code>
+values in Python.  There is no way to manually create
+such an object in Python.
 <code>JSObject</code> is a class provided by this module.
 </td>
 </tr>
@@ -322,15 +317,15 @@ values.
 </table>
 
 <!-- ====================================================== -->
-<h2>Nitro Module Reference</h2>
+<h2>nitro_pie Module Reference</h2>
 
 <p>In general, the functions and methods in classes in this module
 are veneers over the C APIs for JavaScriptCore as documented
 at the
 <a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
-available at the ADC.</p>
+available at the ADC.
 
-<p><a href="api/index.html">API doc</a></p>
+<p><a href="api/index.html">API doc</a>
 
 
 </body>

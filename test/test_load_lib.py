@@ -33,14 +33,17 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self):
+        self.ctx = JSContext()
+        
+    def tearDown(self):
+        self.ctx.release()
 
     #---------------------------------------------------------------
     def test_gc(self):

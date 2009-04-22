@@ -35,37 +35,51 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
 
 #-------------------------------------------------------------------
-def sum_callback(ctx, function, thisObject, argCount, args, exception):
-    log()
+def sum_callback(ctx, function, thisObject, args):
     sum = 0
     for arg in args:
         sum += arg
-        log("sum: %s" % str(sum))
-#        log("sum: %d" % sum)
         
-    log("returning: %s" % str(sum))
     return sum
+
+#-------------------------------------------------------------------
+def array_callback(ctx, function, thisObject, args):
+    arr = ctx.eval("[]")
+    
+    for i, v in enumerate(args):
+        arr.setPropertyAtIndex(i, v)
+        
+    return arr
+
+#-------------------------------------------------------------------
+def ox_callback(ctx, function, args):
+    result = ctx.eval("({})")
+    
+    val = args[0] if len(args) else None
+
+    result.setProperty("x", val)
+        
+    return result
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self):
+        self.ctx = JSContext()
+        
+    def tearDown(self):
+        self.ctx.release()
 
     #---------------------------------------------------------------
-    def test_function_as_callback(self):
-#        NitroLogging(True)
-#        logging(True)
-#       print
-
-        ctx = JSContext()
+    def test_function_as_callback_sum(self):
+        log()
+        ctx = self.ctx
         
         function = ctx.makeFunctionWithCallback("sum", sum_callback)
-        log("function: %s" % function)
         
         globalObject = ctx.getGlobalObject()
         globalObject.setProperty("sum", function, JSPropertyAttributeNone)
@@ -75,12 +89,47 @@ class Test(unittest.TestCase):
         except JSException, e:
             log(get_js_props(e.value))
             self.fail()
-#           raise JSException, e
             
-        log("result: %s" % result)
         self.assertEquals(15, result)
         
-        ctx.release()
+    #---------------------------------------------------------------
+    def test_function_as_callback_arr(self):
+        log()
+        ctx = self.ctx
+        
+        function = ctx.makeFunctionWithCallback("arr", array_callback)
+        
+        globalObject = ctx.getGlobalObject()
+        globalObject.setProperty("arr", function)
+        
+        try:
+            result = ctx.eval("arr(66,44,22)")
+        except JSException, e:
+            log(get_js_props(e.value))
+            self.fail()
+            
+        self.assertEquals(3,  result.getProperty("length"))
+        self.assertEquals(66, result.getPropertyAtIndex(0))
+        self.assertEquals(44, result.getPropertyAtIndex(1))
+        self.assertEquals(22, result.getPropertyAtIndex(2))
+        
+    #---------------------------------------------------------------
+    def test_constructor_as_callback_ox(self):
+        log()
+        ctx = self.ctx
+        
+        function = ctx.makeConstructorWithCallback(ox_callback)
+        
+        globalObject = ctx.getGlobalObject()
+        globalObject.setProperty("ox", function, JSPropertyAttributeNone)
+        
+        try:
+            result = ctx.eval("new ox(55)")
+        except JSException, e:
+            log(get_js_props(e.value))
+            self.fail()
+            
+        self.assertEquals(55, result.getProperty("x"))
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

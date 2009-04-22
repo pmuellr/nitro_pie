@@ -34,6 +34,7 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 import unittest
 
 from nitro_pie import *
+from test_utils import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
@@ -46,40 +47,62 @@ class Test(unittest.TestCase):
         self.ctx.release()
 
     #---------------------------------------------------------------
-    def test_valid_syntax(self):
+    def test_isEqual(self):
         ctx = self.ctx
         
-        script = "a = 1"
+        o1 = ctx.eval("({})")
+        o2 = ctx.eval("({})")
         
-        result = ctx.checkScriptSyntax(script)
-        self.assertEqual(1, result)
+        self.assertTrue( o1.isEqual(o1))
+        self.assertTrue( o2.isEqual(o2))
+        self.assertFalse(o1.isEqual(o2))
         
     #---------------------------------------------------------------
-    def test_invalid_syntax(self):
+    def test_isStrictEqual(self):
         ctx = self.ctx
         
-        script = "var 1a = 1"
+        o1 = ctx.eval("({})")
+        o2 = ctx.eval("({})")
         
-        threw  = 0
-        try:
-            result = ctx.checkScriptSyntax(script, "<testing>")
-        except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
-            
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
-            
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
-            
-            threw = 1
-            
-        self.assertEqual(1, threw, "exception not thrown")
+        self.assertTrue( o1.isStrictEqual(o1))
+        self.assertTrue( o2.isStrictEqual(o2))
+        self.assertFalse(o1.isStrictEqual(o2))
+        
+    #---------------------------------------------------------------
+    def test_isInstanceOf(self):
+        ctx = self.ctx
+
+        a     = ctx.eval("[]")
+        array = ctx.eval("Array")
+        
+        self.assertTrue(a.isInstanceOf(array))
+        
+    #---------------------------------------------------------------
+    def test_isFunction(self):
+        ctx = self.ctx
+
+        a = ctx.eval("[]")
+        f = ctx.eval("(function() {})")
+        
+        self.assertFalse(a.isFunction())
+        self.assertTrue(f.isFunction())
+        
+    #---------------------------------------------------------------
+    def test_isConstructor(self):
+        ctx = self.ctx
+
+        a     = ctx.eval("[]")
+        f     = ctx.eval("(function() {})")
+        array = ctx.eval("Array")
+        
+        self.assertFalse(a.isConstructor())
+        self.assertTrue(f.isConstructor())
+        self.assertTrue(array.isConstructor())
+        self.assertTrue(array.isFunction())
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
+    NitroLogging(True)
+    logging(True)
     unittest.main()
 

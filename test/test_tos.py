@@ -33,33 +33,45 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import unittest
 
-from Nitro import *
+from nitro_pie import *
+from test_utils import *
 
 #-------------------------------------------------------------------
 class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
-    def setUp(self): pass
-    def tearDown(self): pass
+    def setUp(self):
+        self.ctx = JSContext()
+
+        ctx = self.ctx
+        
+        self.v_Object = ctx.eval("({})")
+        self.v_NaN    = float("nan")
+        
+    def tearDown(self):
+        self.ctx.release()
 
     #---------------------------------------------------------------
-    def test_round_trip(self):
-        string = "abc123"
-
-#        jsString = string2jsString(string)
-#        string2  = jsString2string(jsString)
-#        self.assertEqual(string, string2)
+    def test_toBoolean(self):
+        ctx = self.ctx
+        
+        self.assertEqual(True, self.v_Object.toBoolean())
         
     #---------------------------------------------------------------
-    def test_unicode(self):
-        string = u'Make \u0633\u0644\u0627\u0645, not war.'
-        string_utf8 = string.encode("utf-8")
+    def test_toNumber(self):
+        ctx = self.ctx
+
+        self.assertEqual("nan", str(self.v_Object.toNumber()))
         
-#        jsString = string2jsString(string)
-#        string2  = jsString2string(jsString)
-#        self.assertEqual(string_utf8, string2)
+    #---------------------------------------------------------------
+    def test_toString(self):
+        ctx = self.ctx
+
+        self.assertEqual("[object Object]", self.v_Object.toString())
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
+    NitroLogging(True)
+    logging(True)
     unittest.main()
 
