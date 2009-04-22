@@ -1,0 +1,22 @@
+#!/bin/sh
+
+VERSION=0.5
+TMPDIR=~/tmp/nitro_pie-$VERSION
+
+rm -rf $TMPDIR
+mkdir  $TMPDIR
+
+rm lib/*.pyc
+rm nps/*.pyc
+rm test/*.pyc
+
+cp -RpX doc  $TMPDIR
+cp -RpX lib  $TMPDIR
+cp -RpX nps  $TMPDIR
+cp -RpX test $TMPDIR
+cp -pX  LICENSE.txt $TMPDIR
+
+rm $TMPDIR.tar.gz
+cd $TMPDIR
+cd ..
+tar -czvf $TMPDIR.tar.gz nitro_pie-$VERSION

@@ -32,8 +32,8 @@
 #--------------------------------------------------------------------
 
 __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
-__date__    = "2009-03-25"
-__version__ = "0.1"
+__date__    = "2009-04-22"
+__version__ = "0.5"
 
 import ctypes
 import ctypes.util
@@ -63,19 +63,13 @@ JSUndefined = "{{undefined}}"
 
 #-------------------------------------------------------------------
 JSPropertyAttributeNone       = 0
-"""Constant used when setting property values"""
+"""Constant used when setting property values with JSObject::setProperty()"""
 JSPropertyAttributeReadOnly   = 1 << 1
-"""Constant used when setting property values"""
+"""Constant used when setting property values with JSObject::setProperty()"""
 JSPropertyAttributeDontEnum   = 1 << 2 
-"""Constant used when setting property values"""
+"""Constant used when setting property values with JSObject::setProperty()"""
 JSPropertyAttributeDontDelete = 1 << 3 
-"""Constant used when setting property values"""
-
-#-------------------------------------------------------------------
-#_JSClassAttributeNone                 = 0
-#"""JSClassAttribute"""
-#_JSClassAttributeNoAutomaticPrototype = 1 << 1 
-#"""JSClassAttribute"""
+"""Constant used when setting property values with JSObject::setProperty()"""
 
 #--------------------------------------------------------------------
 def _string2jsString(string):
@@ -118,23 +112,30 @@ def _jsString2string(jsString):
 
 #--------------------------------------------------------------------
 class JSContext:
-    """Models a Context"""
+    """Models a Context
+    
+    A context maintains the variables and environment that a
+    script runs in."""
 
     #----------------------------------------------------------------
     @staticmethod
     def gc():
-        """A veneer over JSGarbageCollect()"""
+        """Performs a garbage collection
+        
+        You do not need to call this to run
+        the garbage collector, but you can call if if you
+        explicitly want to run it.
+        """
         _log()
         
         _JSGarbageCollect(None)
     
     #----------------------------------------------------------------
     def __init__(self, ctx=None):
-        """A veneer over JSGlobalContextCreate().
+        """Creates a new JSContext object
         
-        Creates a new JSContext which does not need to be
-        retain()'d, but does need to be release()'d.
-        
+        @type    ctx:  JSContext
+        @param   ctx:  an existing JSContext to base this on; for internal use only
         @rtype:  JSContext
         @return: the new JSContext created
         """
@@ -150,14 +151,18 @@ class JSContext:
         
     #----------------------------------------------------------------
     def __del__(self):
-        """Intended for internal use only."""
+        """Intended for internal use only"""
         _log("JSContext() - ctx: %s" % (str(self.ctx)))
         
         while self.ctx: self.release()
     
     #----------------------------------------------------------------
     def __str__(self):
-        """Intended for internal use only."""
+        """Intended for internal use only
+        
+        @rtype:  str
+        @return: a string representation of this object
+        """
         
         return "JSContext{ctx=%s, ref=%d}" % (str(self.ctx), self.ref)
     
@@ -171,15 +176,8 @@ class JSContext:
         raise Exception, "JSContext has been released"
     
     #----------------------------------------------------------------
-    def retain(self):
-        """A veneer over JSGlobalContextRetain()
-        
-        Returns a new JSContext which should be release()'d
-        when you are finished with it.
-        
-        @rtype:  JSContext
-        @return: the new retained JSContext 
-        """
+    def _retain(self):
+        """Intended for internal use only"""
         _log()
         
         self._checkAllocated()
@@ -189,7 +187,10 @@ class JSContext:
         
     #----------------------------------------------------------------
     def release(self):
-        """A veneer over JSGlobalContextRelease()"""
+        """Releases the context
+        
+        You should release the context when you are finished
+        with it."""
         _log()
         
         if self.ref <= 0: 
@@ -208,15 +209,15 @@ class JSContext:
         sourceURL=None, 
         startingLineNumber=1
         ):
-        """A veneer over JSCheckScriptSyntax()
-
+        """Checks a script for validity without running it
+        
         @rtype:                    boolean
         @return:                   whether the script is syntactically correct
         @type  script:             str | unicode
         @param script:             the source code for the script to check
         @type  sourceURL:          str | unicode
         @param sourceURL:          the URL of the source code
-        @type  startingLineNumber: number
+        @type  startingLineNumber: int
         @param startingLineNumber: the line number of the script
         """
         _log()
@@ -255,7 +256,12 @@ class JSContext:
         sourceURL=None, 
         startingLineNumber=1
         ):
-        """A veneer over JSEvaluateScript()
+        """Execute a script
+        
+        Executes a script, and returns the result.  For scripts
+        which are expressions, this returns the expression value.
+        For scripts which contain statements, returns the value of
+        executing the final statement.
         
         @rtype:                    JSObject
         @return:                   result of evaluating the script
@@ -265,7 +271,7 @@ class JSContext:
         @param thisObject:         the global object when executing the script
         @type  sourceURL:          str | unicode
         @param sourceURL:          the URL of the source code
-        @type  startingLineNumber: number
+        @type  startingLineNumber: int
         @param startingLineNumber: the line number of the script
         """
         _log()
@@ -300,7 +306,7 @@ class JSContext:
 
     #----------------------------------------------------------------
     def getGlobalObject(self):
-        """A veneer over JSContextGetGlobalObject()
+        """Returns the 'global' object associated with a context
         
         @rtype:   JSObject
         @return:  the global object for this context
@@ -313,7 +319,10 @@ class JSContext:
         
     #----------------------------------------------------------------
     def makeConstructorWithCallback(self, callback):
-        """A veneer over JSObjectMakeConstructor()
+        """Create a new JavaScript constructor
+        
+        Create a JavaScript constructor implemented with a Python
+        function.
         
         @rtype:           JSObject
         @return:          the constructor created
@@ -348,7 +357,10 @@ class JSContext:
         
     #----------------------------------------------------------------
     def makeFunctionWithCallback(self, name, callback):
-        """A veneer over JSObjectMakeFunctionWithCallback()
+        """Create a new JavaScript function
+        
+        Create a JavaScript function implemented with a Python
+        function.
         
         @rtype:           JSObject
         @return:          the constructor created
@@ -430,11 +442,32 @@ class JSContext:
         
 #--------------------------------------------------------------------
 class JSObject:
-    """Models a JavaScript object """
+    """Models a JavaScript object
+    
+    This class is used to represent non-primitive JavaScript
+    values such as objects, arrays, and functions.  Primitive
+    values including strings, booleans, numbers, null and undefined
+    are represented as native Python values.
+    
+    Most methods of this class take an optional context value
+    parameter.  If specified, the operation will occur against that
+    context, else it will occur against the context the object was
+    created in.
+    """
 
     #--------------------------------------------------------------------
     @staticmethod
     def isJSObject(o):
+        """Returns an indication of whether this is a JavaScript object.
+        
+        Typically used to test a result to see if it's a complex or 
+        primitive JavaScript object.
+        
+        @rtype:    boolean
+        @return:   whether the specified object is a JSObject
+        @type  o:  any
+        @param o:  the object to test to see if it's a JSObject
+        """
         return isinstance(o,JSObject)
 
     #--------------------------------------------------------------------
@@ -458,7 +491,10 @@ class JSObject:
     
     #----------------------------------------------------------------
     def __init__(self, jsRef, ctx):
-        """Intended for internal use only."""
+        """Creates a new JSObject.
+        
+        Intended for internal use only.
+        """
         _log("JSObject() - ctx: %s; jsRef: %s" % (str(ctx), str(jsRef)))
         
         self.ctx   = ctx
@@ -506,7 +542,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def isEqual(self, jsObject, jsContext=None):
-        """A veneer over JSValueIsEqual()"""
+        """Returns whether the current JSObject is equal to the specified JSObject
+        
+        @rtype:   boolean
+        @return:  whether the specified object is equal to this JSObject
+        @type  jsObject:  JSObject
+        @param jsObject:  the object to compare against
+        """
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
@@ -515,7 +557,13 @@ class JSObject:
         
     #----------------------------------------------------------------
     def isStrictEqual(self, jsObject, jsContext=None):
-        """A veneer over JSValueisStrictEqual()"""
+        """Returns whether the current JSObject is strictly equal to the specified JSObject
+        
+        @rtype:   boolean
+        @return:  whether the specified object is strictly equal to this JSObject
+        @type  jsObject:  JSObject
+        @param jsObject:  the object to compare against
+        """
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
@@ -524,7 +572,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def isInstanceOf(self, jsConstructor, jsContext=None):
-        """A veneer over JSValueIsInstanceOfConstructor()"""
+        """Returns whether the current JSObject is an instance of the specified JSObject
+        
+        @rtype:  boolean
+        @return: whether the current JSObject is an instance of the specified JSObject, which should be a constructor
+        @type  jsConstructor:  JSObject
+        @param jsConstructor:  the constructor to test against
+        """
         
         ctx = jsContext.ctx if jsContext else self.ctx
         self._checkAllocated(ctx)
@@ -533,7 +587,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def toBoolean(self, jsContext=None):
-        """A veneer over JSValueToBoolean()"""
+        """Returns the value of the current JSObject, converted to a boolean
+        
+        @rtype:  boolean
+        @return: the object converted to a boolean value
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -543,7 +601,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def toNumber(self, jsContext=None):
-        """A veneer over JSValueToBoolean()"""
+        """Returns the value of the current JSObject, converted to a number
+        
+        @rtype:  float
+        @return: the object converted to a number
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -561,7 +623,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def toString(self, jsContext=None):
-        """A veneer over JSValueToStringCopy()"""
+        """Returns the value of the current JSObject, converted to a string
+        
+        @rtype:  str
+        @return: the object converted to a string
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -578,7 +644,11 @@ class JSObject:
         
     #----------------------------------------------------------------
     def getPropertyNames(self, jsContext=None):
-        """A veneer over JSObjectCopyPropertyNames()"""
+        """Returns the names of the properties of this object
+        
+        @rtype:  list of str
+        @return: the enumerable property names of this object
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -596,7 +666,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def deleteProperty(self, propertyName, jsContext=None):
-        """A veneer over JSObjectDeleteProperty()"""
+        """Deletes the specified property
+        
+        @rtype:  boolean
+        @return: whether the property could be deleted
+        @type  propertyName:  str|unicode
+        @param propertyName:  the name of the property to delete
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -617,7 +693,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def getProperty(self, propertyName, jsContext=None):
-        """A veneer over JSObjectGetProperty()"""
+        """Returns the specified property value
+        
+        @rtype:  any
+        @return: the value of the specified property
+        @type  propertyName:  str|unicode
+        @param propertyName:  the name of the property to retrieve
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -639,7 +721,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def getPropertyAtIndex(self, propertyIndex, jsContext=None):
-        """A veneer over JSGetPropertyAtIndex()"""
+        """Returns the specified array element
+
+        @rtype:  any
+        @return: the value of the specified array index
+        @type  propertyIndex:  int
+        @param propertyIndex:  the index of the array element to retrieve
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -657,7 +745,11 @@ class JSObject:
  
     #----------------------------------------------------------------
     def getPrototype(self, jsContext=None):
-        """A veneer over JSObjectGetPrototype()"""
+        """Returns the prototype of this JSObject
+        
+        @rtype:  any
+        @return: the prototype of this JSObject
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -669,7 +761,13 @@ class JSObject:
 
     #----------------------------------------------------------------
     def hasProperty(self, propertyName, jsContext=None):
-        """A veneer over JSObjectHasProperty()"""
+        """Returns whether this JSObject contains the specified property
+
+        @rtype:  boolean
+        @return: whether this JSObject has this property
+        @type  propertyName:  str|unicode
+        @param propertyName:  the name of the property to delete
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -684,7 +782,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def isConstructor(self, jsContext=None):
-        """A veneer over JSObjectIsConstructor()"""
+        """Returns whether this JSObject is a constructor
+
+        @rtype:  boolean
+        @return: whether this JSObject is a constructor
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -694,7 +796,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def isFunction(self, jsContext=None):
-        """A veneer over JSObjectIsFunction()"""
+        """Returns whether this JSObject is a function
+
+        @rtype:  boolean
+        @return: whether this JSObject is a function
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -704,7 +810,15 @@ class JSObject:
 
     #----------------------------------------------------------------
     def setProperty(self, propertyName, value, attributes=JSPropertyAttributeNone, jsContext=None):
-        """A veneer over JSObjectSetProperty()"""
+        """Set the specified property to the specified value
+        
+        @type  propertyName:  str|unicode
+        @param propertyName:  the name of the property to create/set
+        @type  value:         any
+        @param value:         the value of the property
+        @type  attributes:    int
+        @param attributes:    attribute values for the property.  Values is a bit ORing of the JSPropertyAttribute* properties of this module.
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -725,7 +839,13 @@ class JSObject:
         
     #----------------------------------------------------------------
     def setPropertyAtIndex(self, propertyIndex, value, jsContext=None):
-        """A veneer over JSObjectSetPropertyAtIndex()"""
+        """Set the specified element of this array to the specified value
+        
+        @type  propertyIndex:  int
+        @param propertyIndex:  the array index of the element to set
+        @type  value:          any
+        @param value:          the value of the array element
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -742,7 +862,11 @@ class JSObject:
 
     #----------------------------------------------------------------
     def setPrototype(self, value, jsContext=None):
-        """A veneer over JSObjectSetPrototype()"""
+        """Set the prototype of this JSObjecto the specified value
+        
+        @type  value:         any
+        @param value:         the new value of the prototype
+        """
         _log()
         
         ctx = jsContext.ctx if jsContext else self.ctx
@@ -964,14 +1088,22 @@ class JSLibrary:
     system defined method."""
     
     libraryPath = None
-    """Holds the fully qualified name of the JavaScriptCore library"""
+    """Holds the fully qualified name of the JavaScriptCore library
+    
+    If this library is set, it overrides the libraryName variable
+    setting and is used as the complete name of the library.
+    """
     
     _library    = None
     
     #----------------------------------------------------------------
     @staticmethod
     def getLibrary():
-        """Return the JavaScriptCore library as a CDLL or equivalent"""
+        """Return the JavaScriptCore library as a CDLL or equivalent
+        
+        @rtype:  ctypes.CDLL
+        @return: the JavaScriptCore library
+        """
 
         if JSLibrary._library: return JSLibrary._library
         

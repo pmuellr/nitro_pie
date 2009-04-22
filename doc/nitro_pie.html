@@ -46,14 +46,19 @@ pre, xmp {
 
 /*-----------------------------------------------------------------*/
 h1,h2,h3 {
-    padding-left:         2em;
-    padding-right:      0.3em;
-    padding-top:        0.3em;
-    padding-bottom:     0.3em;
-    border-width:       0;
-    background:         #227;
-    color:              #FFF;
-    text-shadow:        2px 2px 2px #777;
+    padding-left:          2em;
+    padding-right:         0.3em;
+    padding-top:           0.3em;
+    padding-bottom:        0.3em;
+    border-style:          solid;
+    border-width:          1;
+    border-color:          #000;
+    background:            #227;
+    color:                 #FFF;
+    text-shadow:           2px 2px 2px #777;
+    -moz-border-radius:    10px;
+    -webkit-border-radius: 10px;    
+    
 }
 
 /*-----------------------------------------------------------------*/
@@ -196,7 +201,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
-<li>2009-04-21 - Patrick Mueller - initial write-up</li>
+<li>2009-04-22 - Patrick Mueller - version 0.5</li>
 </ul>
 
 <!-- ====================================================== -->
@@ -219,7 +224,8 @@ You may want to get familiarity with this framework before using
 this package in anger.  In lieu of that, examine the test cases.
 
 <p>Note that the <code>nitro_pie</code> module does not currently expose
-all of the WebKit APIs.
+all of the WebKit APIs.  It does expose enough to do some interesting
+things.
 
 <!-- ====================================================== -->
 <h2>Installation</h2>
@@ -232,12 +238,78 @@ an appropriate directory to use with other Python code.
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
 module, which is included in Python distributions starting with version 2.5.
-This module has currently only be tested or used on Mac OS X, and will likely
+The <code>nitro_pie</code> module has currently only be tested and used on Mac OS X, and will likely
 need some changes to run on other operating systems.  Along with finding/building
 a copy of JavaScriptCore for those operating systems.
 
 <!-- ====================================================== -->
 <h2>Usage</h2>
+
+<p>There are test cases available in the <code>test</code> subdirectory,
+and a shell example available in the <code>nps</code> directory, to see
+some real life usage.
+
+<p>All usages of <code>nitro_pie</code> start with obtaining a
+<code>JSContext</code> object, via the following invocation:
+
+<pre>
+context = JSContext()
+</pre>
+
+<p>Once a context has been obtained, you can execute a script using
+<code>JSContext</code>'s <code>eval()</code> method:
+
+<pre>
+result = context.eval(script, None, script_file_name, 1)
+</pre>
+
+<p>The <code>eval()</code> method will return the result of evaluating
+JavaScript code, perhaps returning a <code>JSObject</code> instance
+that you can further noodle on.
+
+<p>To add a new function to a context that a script executes in,
+use the <code>JSContext</code> <code>makeFunctionWithCallback()</code> method,
+and then add it to the 'global' object of the context:
+
+<pre>
+function     = context.makeFunctionWithCallback("print", callback_print)
+globalObject = context.getGlobalObject()
+globalObject.setProperty("print", function)</pre>
+</pre>
+
+<p>The second argument to the <code>makeFunctionWithCallback()</code> method
+is a Python callable, which should have the following signature:
+
+<pre>
+def callback_print(context, function, thisObject, args)
+</pre>
+
+<p>The <code>context</code> parameter is the context that the function
+was invoked within.
+The <code>function</code> parameter is the JavaScript function that is
+currently executing.
+The <code>thisObject</code> parameter is the <code>'this'</code> value
+for the invocation.
+The <code>args</code> parameter is the array of parameters passed
+to the function.  
+
+<p>The function should return whatever value it needs to return.  Here's
+an example of a function which prints it's arguments:
+
+<pre>
+def callback_print(context, function, thisObject, args):
+    line = ""
+    
+    for arg in args:
+        if JSObject.isJSObject(arg):
+            printable = arg.toString()
+        else:
+            printable = str(arg)
+    
+        line = line + printable
+        
+    print line
+</pre>
 
 <!-- ====================================================== -->
 <h2>Data conversions</h2>
@@ -316,6 +388,35 @@ such an object in Python.
 
 </table>
 
+<h3>Notes</h3>
+
+<p>Because JavaScript values returned from the APIs may be either
+natural Python types (given the mapping above), or instances of 
+<code>JSObject</code>, you will likely need to be able to sniff to see
+if instances are <code>JSObject</code>'s at times.  You can use the
+function <code>JSObject.isJSObject()</code> to test for this, or just use
+the more natural Python test of 
+<code>isInstance(object,JSObject)</code>.
+
+<p>There is currently no direct way of creating JavaScript objects or
+arrays other than the 'primitive' values specified in the table above.
+To do this indirectly, use <code>JSContext.eval()</code>.  For instance,
+to create a new empty object, use:
+
+<pre>
+object = context.eval("({})")
+</pre>
+
+<p>To create an array, use:
+
+<pre>
+object = context.eval("[]")
+</pre>
+
+<p>All JavaScript objects besides the primitives specified in the table
+above can be accessed and manipulated as instances of 
+<code>JSObject</code>.
+
 <!-- ====================================================== -->
 <h2>nitro_pie Module Reference</h2>
 
@@ -325,8 +426,8 @@ at the
 <a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
 available at the ADC.
 
-<p><a href="api/index.html">API doc</a>
-
+<p>Some <a href="api/index.html">Epydoc generated documentation</a> for the module
+is also available.
 
 </body>
 
