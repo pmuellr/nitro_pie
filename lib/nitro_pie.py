@@ -35,6 +35,30 @@ __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
 __date__    = "2009-04-29"
 __version__ = "0.6"
 
+__all__ = """
+NitroLogging
+
+JSException
+JSGlobalContextRef
+JSLibrary
+JSObjectCallAsConstructorCallback
+JSObjectCallAsFunctionCallback
+JSObjectRef
+JSStringRef
+JSValueRef
+
+kJSPropertyAttributeDontDelete
+kJSPropertyAttributeDontEnum
+kJSPropertyAttributeNone
+kJSPropertyAttributeReadOnly
+kJSTypeBoolean
+kJSTypeNull
+kJSTypeNumber
+kJSTypeObject
+kJSTypeString
+kJSTypeUndefined
+""".split()
+
 import ctypes
 import ctypes.util
 import inspect
@@ -96,12 +120,17 @@ class JSContextRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def eval(self, script, thisObject=None, sourceURL=None, startingLineNumber=1):
         _log("JSContextRef.$f(%s, '%s', %s, '%s', %s)", (self, script, thisObject, sourceURL, startingLineNumber))
-        
+        if thisObject:         assert isinstance(context,            JSValueRef),   "Expecting a JSValueRef for the thisObject parameter"
+        if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
+
         script_ref    = JSStringRef.asRef(script)
         sourceURL_ref = JSStringRef.asRef(sourceURL)
         exception     = JSValueRef()
         exception.protect(self)
         
+        if not script_ref: 
+            raise TypeError, "Expecting a string for the script parameter"
+            
         _log("JSContextRef.$f() ->")
         result = _JSEvaluateScript(
             self,
@@ -117,6 +146,7 @@ class JSContextRef(ctypes.c_void_p):
         if sourceURL != sourceURL_ref: sourceURL_ref.release()
         
         if exception.value: 
+            _log("JSContextRef.$f() raising exception")
             raise JSException, exception
 
         exception.unprotect(self)
@@ -126,11 +156,15 @@ class JSContextRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def checkScriptSyntax(self, script, sourceURL=None, startingLineNumber=1):
         _log("JSContextRef.$f(%s, '%s', '%s', %s)", (self, script, sourceURL, startingLineNumber))
+        if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
     
         script_ref    = JSStringRef.asRef(script)
         sourceURL_ref = JSStringRef.asRef(sourceURL)
         exception     = JSValueRef(None)
         
+        if not script_ref: 
+            raise TypeError, "Expecting a string for the script parameter"
+            
         result = _JSCheckScriptSyntax(
             self,
             script_ref,
@@ -150,18 +184,22 @@ class JSContextRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def makeFunction(self, name, function):
         _log("JSContextRef.$f(%s, '%s', %s)", (self, name, function))
+        assert callable(function), "Expecting a function for the function parameter"
         
         def callback_py(cb_context, cb_function, thisObject, argCount, arg_refs, exception):
             args = []
             for i in xrange(0, argCount):
                 args.append(arg_refs[i])
             result = function(cb_context, cb_function, thisObject, args)
-            
-            return result
+            if not isinstance(result,JSValueRef):
+                raise TypeError, "callback function: '%s' - callbacks must return a JSValueRef" % name
+            return result.value
             
         callback_c = JSObjectCallAsFunctionCallback(callback_py)
         
         name_ref = JSStringRef.asRef(name)
+        if not name_ref: 
+            raise TypeError, "Expecting a string for the name parameter"
         
         result = _JSObjectMakeFunctionWithCallback(self, name_ref, callback_c)
         
@@ -226,12 +264,6 @@ class JSStringRef(ctypes.c_void_p):
         return result
 
     #----------------------------------------------------------------
-    def asJSValueRef(self):
-        _log("JSStringRef.$f(%s)", (self,))
-        
-        return ctypes.cast(self, JSValueRef)
-
-    #----------------------------------------------------------------
     def toString(self):
         _log("JSStringRef.$f(%s)", (self,))
         
@@ -262,7 +294,8 @@ class JSValueRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     @staticmethod
     def makeBoolean(context, value):
-        _log("JSValueRef.$f(%s, %s)", (context, number))
+        _log("JSValueRef.$f(%s, %s)", (context, value))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueMakeBoolean(context, value)
 
@@ -270,6 +303,7 @@ class JSValueRef(ctypes.c_void_p):
     @staticmethod
     def makeNull(context):
         _log("JSValueRef.$f(%s)", (context,))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueMakeNull(context)
 
@@ -277,6 +311,7 @@ class JSValueRef(ctypes.c_void_p):
     @staticmethod
     def makeNumber(context, number):
         _log("JSValueRef.$f(%s, %s)", (context, number))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueMakeNumber(context, number)
 
@@ -284,6 +319,8 @@ class JSValueRef(ctypes.c_void_p):
     @staticmethod
     def makeString(context, string):
         _log("JSValueRef.$f(%s, %s)", (context, string))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
+        assert isinstance(string,  JSStringRef),  "Expecting a JSStringRef for the string parameter"
 
         return _JSValueMakeString(context, string)
 
@@ -291,6 +328,7 @@ class JSValueRef(ctypes.c_void_p):
     @staticmethod
     def makeUndefined(context):
         _log("JSValueRef.$f(%s)", (context,))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueMakeUndefined(context)
 
@@ -305,85 +343,101 @@ class JSValueRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def getType(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueGetType(context, self)
     
     #----------------------------------------------------------------
     def isBoolean(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsBoolean(context, self)
     
     #----------------------------------------------------------------
     def isEqual(self, context, other=None):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
+        assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
+        if other: assert isinstance(other, JSValueRef), "Expecting a JSValueRef for the other parameter"
 
-        return _JSValueIsEqual(context, self, other)
+        return _JSValueIsEqual(context, self, other, None)
     
     #----------------------------------------------------------------
-    def isInstanceOfConstructor(self, context, constructor):
+    def isInstanceOf(self, context, constructor):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, constructor))
+        assert isinstance(context, JSContextRef),   "Expecting a JSContextRef for the context parameter"
+        assert isinstance(constructor, JSValueRef), "Expecting a JSValueRef for the constructor parameter"
         
-        return _JSValueIsInstanceOfConstructor(context, self, constructor)
+        return _JSValueIsInstanceOfConstructor(context, self, constructor, None)
     
     #----------------------------------------------------------------
     def isNull(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsNull(context, self)
     
     #----------------------------------------------------------------
     def isNumber(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsNumber(context, self)
     
     #----------------------------------------------------------------
     def isObject(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsObject(context, self)
     
     #----------------------------------------------------------------
     def isStrictEqual(self, context, other):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
+        if other: assert isinstance(other, JSValueRef), "Expecting a JSValueRef for the other parameter"
 
         return _JSValueIsStrictEqual(context, self, other)
     
     #----------------------------------------------------------------
     def isString(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsString(context, self)
     
     #----------------------------------------------------------------
     def isUndefined(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueIsUndefined(context, self)
     
     #----------------------------------------------------------------
     def protect(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
         _JSValueProtect(context, self)
     
     #----------------------------------------------------------------
     def toBoolean(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
-        context = self._getContext(context)
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueToBoolean(context, self)
     
     #----------------------------------------------------------------
     def toNumber(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
-        return _JSValueToNumber(context, self)
+        return _JSValueToNumber(context, self, None)
     
     #----------------------------------------------------------------
     def toObject(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         result =_JSValueToObject(context, self, None)
         result.context = context
@@ -391,18 +445,21 @@ class JSValueRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def toStringRef(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSValueToStringCopy(context, self, None)
     
     #----------------------------------------------------------------
     def toString(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return self.toStringRef(context).toString()
     
     #----------------------------------------------------------------
     def unprotect(self, context):
         _log("JSValueRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         _JSValueUnprotect(context, self)
 
@@ -412,8 +469,11 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def deleteProperty(self, context, propertyName):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
         propertyName_ref = JSStringRef.asRef(propertyName)
+        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        
         result = _JSObjectDeleteProperty(context, self, propertyName_ref, None)
         if propertyName != propertyName_ref: propertyName_ref.release()
         
@@ -422,8 +482,11 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def getProperty(self, context, propertyName):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         propertyName_ref = JSStringRef.asRef(propertyName)
+        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        
         result = _JSObjectGetProperty(context, self, propertyName_ref, None)
         if propertyName != propertyName_ref: propertyName_ref.release()
         
@@ -433,6 +496,8 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def getPropertyAtIndex(self, context, propertyIndex):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, propertyIndex, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
+        assert isinstance(propertyIndex, int),    "Expecting an integer for the propertyIndex parameter"
         
         result = _JSObjectGetPropertyAtIndex(context, self, propertyIndex, None)
         result.context = context
@@ -441,6 +506,7 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def getPropertyNames(self, context):
         _log("JSObjectRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
         propertyNameArrayRef = _JSObjectCopyPropertyNames(context, self)
         _JSPropertyNameArrayRetain(propertyNameArrayRef)
@@ -459,6 +525,7 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def getPrototype(self, context):
         _log("JSObjectRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         result = _JSObjectGetPrototype(context, self)
         result.context = context
@@ -467,8 +534,11 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def hasProperty(self, context, propertyName):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         propertyName_ref = JSStringRef.asRef(propertyName)
+        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        
         result = _JSObjectHasProperty(context, self, propertyName_ref)
         if propertyName != propertyName_ref: propertyName_ref.release()
         
@@ -477,32 +547,46 @@ class JSObjectRef(JSValueRef):
     #----------------------------------------------------------------
     def isConstructor(self, context):
         _log("JSObjectRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSObjectIsConstructor(context, self)
 
     #----------------------------------------------------------------
     def isFunction(self, context):
         _log("JSObjectRef.$f(%s, %s)", (self, context))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
         return _JSObjectIsFunction(context, self)
 
     #----------------------------------------------------------------
     def setProperty(self, context, propertyName, value, attributes=kJSPropertyAttributeNone):
         _log("JSObjectRef.$f(%s, %s, %s, %s, %s)", (self, context, propertyName, value, attributes))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
+        assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
+        if value: assert isinstance(value, JSValueRef), "Expecting a JSValueRef for the value parameter"
+        assert isinstance(attributes, int),             "Expecting an integer for the attributes parameter"
+        
         propertyName_ref = JSStringRef.asRef(propertyName)
+        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+ 
         _JSObjectSetProperty(context, self, propertyName_ref, value, attributes, None)
-        if propertyName != propertyName_ref: propertyName_ref.release()
+#        if propertyName != propertyName_ref: propertyName_ref.release()
 
     #----------------------------------------------------------------
-    def setPropertyAtIndex(self, context, propertyindex, value):
+    def setPropertyAtIndex(self, context, propertyIndex, value):
         _log("JSObjectRef.$f(%s, %s, %s, %s)", (self, context, propertyIndex, value))
+        assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
+        assert isinstance(propertyIndex, int),          "Expecting an integer for the propertyIndex parameter"
+        if value: assert isinstance(value, JSValueRef), "Expecting a JSValueRef for the value parameter"
         
-        _JSObjectSetPropertyAtIndex(context, self, propertyIndex, value)
+        _JSObjectSetPropertyAtIndex(context, self, propertyIndex, value, None)
 
     #----------------------------------------------------------------
     def setPrototype(self, context, prototype):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, prototype))
+        assert isinstance(context, JSContextRef),               "Expecting a JSContextRef for the context parameter"
+        if prototype: assert isinstance(prototype, JSValueRef), "Expecting a JSValueRef for the prototype parameter"
 
         _JSObjectSetPrototype(context, self, prototype)
 
@@ -537,23 +621,23 @@ class JSChar(ctypes.c_wchar): pass
 
 #-------------------------------------------------------------------
 JSObjectCallAsConstructorCallback = ctypes.CFUNCTYPE(
-    JSObjectRef,                # result
-    JSContextRef,               # ctx
-    JSObjectRef,                # constructor
+    JSObjectRef,                 # result
+    JSContextRef,                # ctx
+    JSObjectRef,                 # constructor
     ctypes.c_size_t,             # argumentCount,
-    ctypes.POINTER(JSValueRef), # arguments
-    ctypes.POINTER(JSValueRef), # exception
+    ctypes.POINTER(JSValueRef),  # arguments
+    ctypes.POINTER(JSValueRef),  # exception
 )
 
 #-------------------------------------------------------------------
 JSObjectCallAsFunctionCallback = ctypes.CFUNCTYPE(
-    JSValueRef,                 # result
-    JSContextRef,               # ctx,
-    JSObjectRef,                # function,
-    JSObjectRef,                # thisObject,
+    JSValueRef,                  # result
+    JSContextRef,                # ctx,
+    JSObjectRef,                 # function,
+    JSObjectRef,                 # thisObject,
     ctypes.c_size_t,             # argumentCount,
-    ctypes.POINTER(JSValueRef), # arguments
-    ctypes.POINTER(JSValueRef), # exception
+    ctypes.POINTER(JSValueRef),  # arguments
+    ctypes.POINTER(JSValueRef),  # exception
 )
 
 #-------------------------------------------------------------------
@@ -1366,24 +1450,27 @@ def _main():
     js_args.protect(context)
     for i, argument in enumerate(arguments):
         val = JSStringRef.create(argument)
-        js_args.setPropertyAtIndex(context, i, val.asJSValueRef())
-        val.release()
+        js_args.setPropertyAtIndex(context, i, JSValueRef.makeString(context,val))
+#        val.release()
         
     globalObject.setProperty(context, "arguments", js_args)
-    js_args.unprotect(context)
+#    js_args.unprotect(context)
     
     #---------------------------------------------------------------
     # add environment
     #---------------------------------------------------------------
     js_env = context.eval("({})").asJSObjectRef()
     js_env.protect(context)
+    val = JSStringRef.create("val")
+    js_env.setProperty(context, "key", JSValueRef.makeString(context,val))
+
     for key, val in os.environ.iteritems():
         val = JSStringRef.create(val)
-        js_env.setProperty(context, key, val.asJSValueRef())
+        js_env.setProperty(context, key, JSValueRef.makeString(context,val))
         val.release()
     
     globalObject.setProperty(context, "environment", js_env)
-    js_env.unprotect(context)
+#    js_env.unprotect(context)
     
     #---------------------------------------------------------------
     # run scripts

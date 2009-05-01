@@ -41,11 +41,11 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
 
         ctx = self.ctx
         
-        self.v_Object = ctx.eval("({})")
+        self.v_Object = ctx.eval("({})").asJSObjectRef()
         self.v_NaN    = float("nan")
         
     def tearDown(self):
@@ -55,19 +55,19 @@ class Test(unittest.TestCase):
     def test_toBoolean(self):
         ctx = self.ctx
         
-        self.assertEqual(True, self.v_Object.toBoolean())
+        self.assertEqual(True, self.v_Object.toBoolean(ctx))
         
     #---------------------------------------------------------------
     def test_toNumber(self):
         ctx = self.ctx
 
-        self.assertEqual("nan", str(self.v_Object.toNumber()))
+        self.assertEqual("nan", str(self.v_Object.toNumber(ctx)))
         
     #---------------------------------------------------------------
     def test_toString(self):
         ctx = self.ctx
 
-        self.assertEqual("[object Object]", self.v_Object.toString())
+        self.assertEqual("[object Object]", self.v_Object.toString(ctx))
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

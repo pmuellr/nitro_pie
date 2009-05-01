@@ -40,7 +40,7 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self):
         self.ctx.release()
@@ -64,16 +64,16 @@ class Test(unittest.TestCase):
         try:
             result = ctx.checkScriptSyntax(script, "<testing>")
         except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
+            e = e.value.asJSObjectRef()
+            props = e.getPropertyNames(ctx)
             
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
+            name    = e.getProperty(ctx,"name")    if e.hasProperty(ctx,"name")    else None
+            message = e.getProperty(ctx,"message") if e.hasProperty(ctx,"message") else None
+            line    = e.getProperty(ctx,"line")    if e.hasProperty(ctx,"line")    else None
             
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
+            self.assertEqual("SyntaxError", name.toString(ctx))
+            self.assertEqual("Parse error", message.toString(ctx))
+            self.assertEqual(1,             line.toNumber(ctx))
             
             threw = 1
             

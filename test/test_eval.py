@@ -40,7 +40,7 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self):
         self.ctx.release()
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         
         script = "1"
         
-        result = ctx.eval(script)
+        result = ctx.eval(script).toNumber(ctx)
         self.assertEqual(1, result)
         
     #---------------------------------------------------------------
@@ -60,7 +60,7 @@ class Test(unittest.TestCase):
         
         script = "true"
         
-        result = ctx.eval(script)
+        result = ctx.eval(script).toBoolean(ctx)
         self.assertEqual(True, result)
         
     #---------------------------------------------------------------
@@ -69,7 +69,7 @@ class Test(unittest.TestCase):
         
         script = "'xyz'"
         
-        result = ctx.eval(script)
+        result = ctx.eval(script).toString(ctx)
         self.assertEqual("xyz", result)
         
     #---------------------------------------------------------------
@@ -79,7 +79,7 @@ class Test(unittest.TestCase):
         script = "null"
         
         result = ctx.eval(script)
-        self.assertEqual(None, result)
+        self.assertTrue(result.isNull(ctx))
         
     #---------------------------------------------------------------
     def test_undefined(self):
@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
         script = "undefined"
         
         result = ctx.eval(script)
-        self.assertEqual(JSUndefined, result)
+        self.assertTrue(result.isUndefined(ctx))
         
     #---------------------------------------------------------------
     def test_object(self):
@@ -97,22 +97,22 @@ class Test(unittest.TestCase):
         script = "({x:1, y:2})"
         
         try:
-            result = ctx.eval(script)
+            result = ctx.eval(script).asJSObjectRef()
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
         
-        props = result.getPropertyNames()
+        props = result.getPropertyNames(ctx)
         self.assertEqual(2, len(props))
         
-        prop = result.getProperty("x")
+        prop = result.getProperty(ctx,"x").toNumber(ctx)
         self.assertEqual(1, prop)
         
-        prop = result.getProperty("y")
+        prop = result.getProperty(ctx,"y").toNumber(ctx)
         self.assertEqual(2, prop)
         
-        prop = result.getProperty("z")
-        self.assertEqual(JSUndefined, prop)
+        prop = result.getProperty(ctx,"z")
+        self.assertTrue(prop.isUndefined(ctx))
         
     #---------------------------------------------------------------
     def test_array(self):
@@ -121,25 +121,25 @@ class Test(unittest.TestCase):
         script = "[4,5,6]"
         
         try:
-            result = ctx.eval(script)
+            result = ctx.eval(script).asJSObjectRef()
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
         
-        prop = result.getProperty("length")
+        prop = result.getProperty(ctx,"length").toNumber(ctx)
         self.assertEqual(3, prop)
         
-        prop = result.getPropertyAtIndex(0)
+        prop = result.getPropertyAtIndex(ctx,0).toNumber(ctx)
         self.assertEqual(4, prop)
         
-        prop = result.getPropertyAtIndex(1)
+        prop = result.getPropertyAtIndex(ctx,1).toNumber(ctx)
         self.assertEqual(5, prop)
         
-        prop = result.getPropertyAtIndex(2)
+        prop = result.getPropertyAtIndex(ctx,2).toNumber(ctx)
         self.assertEqual(6, prop)
     
-        prop = result.getPropertyAtIndex(3)
-        self.assertEqual(JSUndefined, prop)
+        prop = result.getPropertyAtIndex(ctx,3)
+        self.assertTrue(prop.isUndefined(ctx))
         
     #---------------------------------------------------------------
     def test_invalid_syntax(self):
@@ -151,16 +151,16 @@ class Test(unittest.TestCase):
         try:
             result = ctx.eval(script)
         except JSException, e:
-            e = e.value
-            props = e.getPropertyNames()
+            e = e.value.asJSObjectRef()
+            props = e.getPropertyNames(ctx)
             
-            name    = e.getProperty("name")    if e.hasProperty("name")    else None
-            message = e.getProperty("message") if e.hasProperty("message") else None
-            line    = e.getProperty("line")    if e.hasProperty("line")    else None
+            name    = e.getProperty(ctx,"name")    if e.hasProperty(ctx,"name")    else None
+            message = e.getProperty(ctx,"message") if e.hasProperty(ctx,"message") else None
+            line    = e.getProperty(ctx,"line")    if e.hasProperty(ctx,"line")    else None
             
-            self.assertEqual("SyntaxError", name)
-            self.assertEqual("Parse error", message)
-            self.assertEqual(1,             line)
+            self.assertEqual("SyntaxError", name.toString(ctx))
+            self.assertEqual("Parse error", message.toString(ctx))
+            self.assertEqual(1,             line.toNumber(ctx))
             
             threw = 1
             

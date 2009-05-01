@@ -41,7 +41,7 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self):
         self.ctx.release()
@@ -50,35 +50,35 @@ class Test(unittest.TestCase):
     def test_get_set(self):
         ctx = self.ctx
         
-        p1 = ctx.eval("({a: 111, b: 222})")
-        o  = ctx.eval("({})")
+        p1 = ctx.eval("({a: 111, b: 222})").asJSObjectRef()
+        o  = ctx.eval("({})").asJSObjectRef()
 
-        self.assertFalse(o.hasProperty("a"))
-        self.assertFalse(o.hasProperty("b"))
+        self.assertFalse(o.hasProperty(ctx, "a"))
+        self.assertFalse(o.hasProperty(ctx, "b"))
         
-        o.setPrototype(p1)
+        o.setPrototype(ctx, p1)
 
-        self.assertTrue(o.hasProperty("a"))
-        self.assertTrue(o.hasProperty("b"))
+        self.assertTrue(o.hasProperty(ctx, "a"))
+        self.assertTrue(o.hasProperty(ctx, "b"))
         
-        p2 = o.getPrototype()
+        p2 = o.getPrototype(ctx).asJSObjectRef()
         
-        self.assertEquals(111, p1.getProperty("a"))
-        self.assertEquals(222, p1.getProperty("b"))
+        self.assertEquals(111, p1.getProperty(ctx, "a").toNumber(ctx))
+        self.assertEquals(222, p1.getProperty(ctx, "b").toNumber(ctx))
 
-        self.assertEquals(111,  o.getProperty("a"))
-        self.assertEquals(222,  o.getProperty("b"))
+        self.assertEquals(111,  o.getProperty(ctx, "a").toNumber(ctx))
+        self.assertEquals(222,  o.getProperty(ctx, "b").toNumber(ctx))
 
-        self.assertEquals(111, p2.getProperty("a"))
-        self.assertEquals(222, p2.getProperty("b"))
+        self.assertEquals(111, p2.getProperty(ctx, "a").toNumber(ctx))
+        self.assertEquals(222, p2.getProperty(ctx, "b").toNumber(ctx))
 
-        o.setProperty("a", 333)
-        self.assertEquals(333,  o.getProperty("a"))
-        self.assertEquals(111, p1.getProperty("a"))
+        o.setProperty(ctx, "a", JSValueRef.makeNumber(ctx,333))
+        self.assertEquals(333,  o.getProperty(ctx, "a").toNumber(ctx))
+        self.assertEquals(111, p1.getProperty(ctx, "a").toNumber(ctx))
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
-    NitroLogging(True)
-    logging(True)
+    NitroLogging(not True)
+    logging(not True)
     unittest.main()
 

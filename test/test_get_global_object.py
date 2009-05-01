@@ -40,7 +40,7 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self): 
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self): 
         self.ctx.release()
@@ -51,20 +51,18 @@ class Test(unittest.TestCase):
         
         script = "a = 1"
         
-        ctx = JSContext()
-        
         globalObject = ctx.getGlobalObject()
-        aObject = globalObject.getProperty("a")
-        self.assertEqual(JSUndefined, aObject)
+        
+        aObject = globalObject.getProperty(ctx, "a")
+        self.assertTrue(aObject.isUndefined(ctx))
         
         result = ctx.eval(script)
 
-        globalObject = ctx.getGlobalObject()
-        aObject = globalObject.getProperty("a")
+        aObject = globalObject.getProperty(ctx,"a").toNumber(ctx)
         self.assertEqual(1, aObject)
         
-        bObject = globalObject.getProperty("b")
-        self.assertEqual(JSUndefined, bObject)
+        bObject = globalObject.getProperty(ctx,"b")
+        self.assertTrue(bObject.isUndefined(ctx))
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':

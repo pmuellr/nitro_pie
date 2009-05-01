@@ -41,7 +41,7 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self):
         self.ctx.release()
@@ -53,9 +53,9 @@ class Test(unittest.TestCase):
         o1 = ctx.eval("({})")
         o2 = ctx.eval("({})")
         
-        self.assertTrue( o1.isEqual(o1))
-        self.assertTrue( o2.isEqual(o2))
-        self.assertFalse(o1.isEqual(o2))
+        self.assertTrue( o1.isEqual(ctx,o1))
+        self.assertTrue( o2.isEqual(ctx,o2))
+        self.assertFalse(o1.isEqual(ctx,o2))
         
     #---------------------------------------------------------------
     def test_isStrictEqual(self):
@@ -64,45 +64,43 @@ class Test(unittest.TestCase):
         o1 = ctx.eval("({})")
         o2 = ctx.eval("({})")
         
-        self.assertTrue( o1.isStrictEqual(o1))
-        self.assertTrue( o2.isStrictEqual(o2))
-        self.assertFalse(o1.isStrictEqual(o2))
+        self.assertTrue( o1.isStrictEqual(ctx,o1))
+        self.assertTrue( o2.isStrictEqual(ctx,o2))
+        self.assertFalse(o1.isStrictEqual(ctx,o2))
         
     #---------------------------------------------------------------
     def test_isInstanceOf(self):
         ctx = self.ctx
 
         a     = ctx.eval("[]")
-        array = ctx.eval("Array")
+        array = ctx.eval("Array").asJSObjectRef()
         
-        self.assertTrue(a.isInstanceOf(array))
+        self.assertTrue(a.isInstanceOf(ctx,array))
         
     #---------------------------------------------------------------
     def test_isFunction(self):
         ctx = self.ctx
 
-        a = ctx.eval("[]")
-        f = ctx.eval("(function() {})")
+        a = ctx.eval("[]").asJSObjectRef()
+        f = ctx.eval("(function() {})").asJSObjectRef()
         
-        self.assertFalse(a.isFunction())
-        self.assertTrue(f.isFunction())
+        self.assertFalse(a.isFunction(ctx))
+        self.assertTrue(f.isFunction(ctx))
         
     #---------------------------------------------------------------
     def test_isConstructor(self):
         ctx = self.ctx
 
-        a     = ctx.eval("[]")
-        f     = ctx.eval("(function() {})")
-        array = ctx.eval("Array")
+        a     = ctx.eval("[]").asJSObjectRef()
+        f     = ctx.eval("(function() {})").asJSObjectRef()
+        array = ctx.eval("Array").asJSObjectRef()
         
-        self.assertFalse(a.isConstructor())
-        self.assertTrue(f.isConstructor())
-        self.assertTrue(array.isConstructor())
-        self.assertTrue(array.isFunction())
+        self.assertFalse(a.isConstructor(ctx))
+        self.assertTrue(f.isConstructor(ctx))
+        self.assertTrue(array.isConstructor(ctx))
+        self.assertTrue(array.isFunction(ctx))
         
 #-------------------------------------------------------------------
 if __name__ == '__main__':
-    NitroLogging(True)
-    logging(True)
     unittest.main()
 

@@ -37,14 +37,21 @@ def logging(bool):
     global LOGGING
     LOGGING = bool
     
-def log(message=""):
+def log(message="", args=None):
     if not LOGGING: return
     
     caller = inspect.stack()[1]
     (frame, filename, lineNumber, function, context, contextIndex) = caller
     filename = os.path.basename(filename)
     
-    print "%s[%d]: %s(): %s" % (filename, lineNumber, function, message)
+    if args:
+        args    = [str(arg) for arg in args]
+        message = message % tuple(args)
+        
+    message = message.replace("$f", function)
+    message = message.replace("\n", "\\n")
+    
+    print "%s[%4d]: %s" % (filename, lineNumber, message)
 
 #-------------------------------------------------------------------
 def get_js_props(jsObject):

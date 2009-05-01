@@ -40,14 +40,14 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSContext()
+        self.ctx = JSGlobalContextRef.create()
         
     def tearDown(self):
         self.ctx.release()
 
     #---------------------------------------------------------------
     def test_gc(self):
-        JSContext.gc()
+        self.ctx.garbageCollect()
                 
 #-------------------------------------------------------------------
 if __name__ == '__main__':
