@@ -106,6 +106,8 @@ kJSPropertyAttributeDontDelete = 1 << 3
 #--------------------------------------------------------------------
 class JSContextRef(ctypes.c_void_p):
 
+    functions = []
+    
     #----------------------------------------------------------------
     def getGlobalObject(self):
         _log("JSContextRef.$f(%s)", (self,))
@@ -188,18 +190,25 @@ class JSContextRef(ctypes.c_void_p):
         
         def callback_py(cb_context, cb_function, thisObject, argCount, arg_refs, exception):
             args = []
+            
             for i in xrange(0, argCount):
                 args.append(arg_refs[i])
+            
             result = function(cb_context, cb_function, thisObject, args)
+            
+            if not result: return None
+            
             if not isinstance(result,JSValueRef):
                 raise TypeError, "callback function: '%s' - callbacks must return a JSValueRef" % name
+            
             return result.value
             
         callback_c = JSObjectCallAsFunctionCallback(callback_py)
         
+        # problem - need to keep the callbacks from being GC'd
+        JSContextRef.functions.append(callback_c)
+        
         name_ref = JSStringRef.asRef(name)
-        if not name_ref: 
-            raise TypeError, "Expecting a string for the name parameter"
         
         result = _JSObjectMakeFunctionWithCallback(self, name_ref, callback_c)
         
@@ -267,8 +276,8 @@ class JSStringRef(ctypes.c_void_p):
     def toString(self):
         _log("JSStringRef.$f(%s)", (self,))
         
-        len    = _JSStringGetMaximumUTF8CStringSize(self)
-        result = ctypes.create_string_buffer(len + 1)
+        len    = _JSStringGetMaximumUTF8CStringSize(self) + 1
+        result = ctypes.create_string_buffer(len)
     
         _JSStringGetUTF8CString(self, result, len)
         
@@ -454,7 +463,11 @@ class JSValueRef(ctypes.c_void_p):
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
-        return self.toStringRef(context).toString()
+        ref = self.toStringRef(context)
+        result = ref.toString()
+        ref.release()
+        
+        return result
     
     #----------------------------------------------------------------
     def unprotect(self, context):
@@ -1374,6 +1387,7 @@ def _parse_args():
 
 #-------------------------------------------------------------------------------
 def _callback_print(context, function, thisObject, args):
+#    if True: return
     _log("$f(%s, %s, %s, %s)", (context, function, thisObject, args))
 
     line = ""
@@ -1385,6 +1399,8 @@ def _callback_print(context, function, thisObject, args):
         
     print line
     _log("$f() <-")
+    
+    return JSValueRef.makeUndefined(context)
 
 #-------------------------------------------------------------------------------
 def _handle_JSException(e, context):
@@ -1440,7 +1456,7 @@ def _main():
     #---------------------------------------------------------------
     # add builtins
     #---------------------------------------------------------------
-    function = context.makeFunction("print", _callback_print)
+    function = context.makeFunction(None, _callback_print)
     globalObject.setProperty(context, "print", function)
     
     #---------------------------------------------------------------
@@ -1503,5 +1519,5 @@ if __name__ == '__main__':
     import os
     import sys
     
-    NitroLogging(True)
+    NitroLogging(not True)
     _main()    
