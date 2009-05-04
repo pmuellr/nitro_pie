@@ -125,27 +125,27 @@ class JSContextRef(ctypes.c_void_p):
         if thisObject:         assert isinstance(context,            JSValueRef),   "Expecting a JSValueRef for the thisObject parameter"
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
 
-        script_ref    = JSStringRef.asRef(script)
-        sourceURL_ref = JSStringRef.asRef(sourceURL)
-        exception     = JSValueRef()
+        scriptRef    = JSStringRef.asRef(script)
+        sourceURLRef = JSStringRef.asRef(sourceURL)
+        exception    = JSValueRef()
         exception.protect(self)
         
-        if not script_ref: 
+        if not scriptRef: 
             raise TypeError, "Expecting a string for the script parameter"
             
         _log("JSContextRef.$f() ->")
         result = _JSEvaluateScript(
             self,
-            script_ref,
+            scriptRef,
             thisObject,
-            sourceURL_ref,
+            sourceURLRef,
             startingLineNumber,
             ctypes.byref(exception)
             )
         _log("JSContextRef.$f() -> %s", (result,))
 
-        if script    != script_ref:    script_ref.release()
-        if sourceURL != sourceURL_ref: sourceURL_ref.release()
+        if script    != scriptRef:    scriptRef.release()
+        if sourceURL != sourceURLRef: sourceURLRef.release()
         
         if exception.value: 
             _log("JSContextRef.$f() raising exception")
@@ -160,23 +160,23 @@ class JSContextRef(ctypes.c_void_p):
         _log("JSContextRef.$f(%s, '%s', '%s', %s)", (self, script, sourceURL, startingLineNumber))
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
     
-        script_ref    = JSStringRef.asRef(script)
-        sourceURL_ref = JSStringRef.asRef(sourceURL)
-        exception     = JSValueRef(None)
+        scriptRef    = JSStringRef.asRef(script)
+        sourceURLRef = JSStringRef.asRef(sourceURL)
+        exception    = JSValueRef(None)
         
-        if not script_ref: 
+        if not scriptRef: 
             raise TypeError, "Expecting a string for the script parameter"
             
         result = _JSCheckScriptSyntax(
             self,
-            script_ref,
-            sourceURL_ref,
+            scriptRef,
+            sourceURLRef,
             startingLineNumber,
             ctypes.byref(exception)
             )
         
-        if script    != script_ref:    script_ref.release()
-        if sourceURL != sourceURL_ref: sourceURL_ref.release()
+        if script    != scriptRef:    scriptRef.release()
+        if sourceURL != sourceURLRef: sourceURLRef.release()
 
         if exception.value: 
             raise JSException, exception
@@ -188,13 +188,13 @@ class JSContextRef(ctypes.c_void_p):
         _log("JSContextRef.$f(%s, '%s', %s)", (self, name, function))
         assert callable(function), "Expecting a function for the function parameter"
         
-        def callback_py(cb_context, cb_function, thisObject, argCount, arg_refs, exception):
+        def callbackFunction(cbContext, cbFunction, thisObject, argCount, argRefs, exception):
             args = []
             
             for i in xrange(0, argCount):
-                args.append(arg_refs[i])
+                args.append(argRefs[i])
             
-            result = function(cb_context, cb_function, thisObject, args)
+            result = function(cbContext, cbFunction, thisObject, args)
             
             if not result: return None
             
@@ -203,19 +203,18 @@ class JSContextRef(ctypes.c_void_p):
             
             return result.value
             
-        callback_c = JSObjectCallAsFunctionCallback(callback_py)
+        callback = JSObjectCallAsFunctionCallback(callbackFunction)
         
         # problem - need to keep the callbacks from being GC'd
-        JSContextRef.functions.append(callback_c)
+        JSContextRef.functions.append(callback)
         
-        name_ref = JSStringRef.asRef(name)
+        nameRef = JSStringRef.asRef(name)
         
-        result = _JSObjectMakeFunctionWithCallback(self, name_ref, callback_c)
+        result = _JSObjectMakeFunctionWithCallback(self, nameRef, callback)
         
-        if name != name_ref: name_ref.release()
+        if name != nameRef: nameRef.release()
         
         return result
-
     
 #--------------------------------------------------------------------
 class JSGlobalContextRef(JSContextRef):
@@ -255,8 +254,8 @@ class JSStringRef(ctypes.c_void_p):
     
         if isinstance(string, str):
             # make sure it's utf-8
-            uni_string = unicode(string, "utf-8" )
-            string     = uni_string.encode("utf-8")
+            uniString = unicode(string,  "utf-8" )
+            string    = uniString.encode("utf-8")
         
         elif isinstance(string, unicode):
             string = string.encode("utf-8")
@@ -484,11 +483,11 @@ class JSObjectRef(JSValueRef):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
-        propertyName_ref = JSStringRef.asRef(propertyName)
-        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        propertyNameRef = JSStringRef.asRef(propertyName)
+        if not propertyNameRef: raise TypeError, "Expecting a string for the propertyName parameter"
         
-        result = _JSObjectDeleteProperty(context, self, propertyName_ref, None)
-        if propertyName != propertyName_ref: propertyName_ref.release()
+        result = _JSObjectDeleteProperty(context, self, propertyNameRef, None)
+        if propertyName != propertyNameRef: propertyNameRef.release()
         
         return result
         
@@ -497,11 +496,11 @@ class JSObjectRef(JSValueRef):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
-        propertyName_ref = JSStringRef.asRef(propertyName)
-        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        propertyNameRef = JSStringRef.asRef(propertyName)
+        if not propertyNameRef: raise TypeError, "Expecting a string for the propertyName parameter"
         
-        result = _JSObjectGetProperty(context, self, propertyName_ref, None)
-        if propertyName != propertyName_ref: propertyName_ref.release()
+        result = _JSObjectGetProperty(context, self, propertyNameRef, None)
+        if propertyName != propertyNameRef: propertyNameRef.release()
         
         result.context = context
         return result
@@ -549,11 +548,11 @@ class JSObjectRef(JSValueRef):
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
-        propertyName_ref = JSStringRef.asRef(propertyName)
-        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        propertyNameRef = JSStringRef.asRef(propertyName)
+        if not propertyNameRef: raise TypeError, "Expecting a string for the propertyName parameter"
         
-        result = _JSObjectHasProperty(context, self, propertyName_ref)
-        if propertyName != propertyName_ref: propertyName_ref.release()
+        result = _JSObjectHasProperty(context, self, propertyNameRef)
+        if propertyName != propertyNameRef: propertyNameRef.release()
         
         return result
 
@@ -580,11 +579,12 @@ class JSObjectRef(JSValueRef):
         if value: assert isinstance(value, JSValueRef), "Expecting a JSValueRef for the value parameter"
         assert isinstance(attributes, int),             "Expecting an integer for the attributes parameter"
         
-        propertyName_ref = JSStringRef.asRef(propertyName)
-        if not propertyName_ref: raise TypeError, "Expecting a string for the propertyName parameter"
+        propertyNameRef = JSStringRef.asRef(propertyName)
+        if not propertyNameRef: raise TypeError, "Expecting a string for the propertyName parameter"
  
-        _JSObjectSetProperty(context, self, propertyName_ref, value, attributes, None)
-#        if propertyName != propertyName_ref: propertyName_ref.release()
+        _JSObjectSetProperty(context, self, propertyNameRef, value, attributes, None)
+
+        if propertyName != propertyNameRef: propertyNameRef.release()
 
     #----------------------------------------------------------------
     def setPropertyAtIndex(self, context, propertyIndex, value):
@@ -846,7 +846,7 @@ _defineFunction("JSCheckScriptSyntax", ctypes.c_int, (
     (JSContextRef,                    "ctx"), 
     (JSStringRef,                     "script"), 
     (JSStringRef,                     "sourceURL"), 
-    (ctypes.c_int32,                   "startingLineNumber"), 
+    (ctypes.c_int32,                  "startingLineNumber"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
 
@@ -856,7 +856,7 @@ _defineFunction("JSEvaluateScript", JSValueRef, (
     (JSStringRef,                     "script"), 
     (JSObjectRef,                     "thisObject"),
     (JSStringRef,                     "sourceURL"),
-    (ctypes.c_int,                     "startingLineNumber"),
+    (ctypes.c_int,                    "startingLineNumber"),
     (ctypes.POINTER(JSValueRef),      "exception"),
 ))
 
@@ -912,7 +912,7 @@ _defineFunction("JSClassRetain", None, (
 _defineFunction("JSObjectCallAsConstructor", JSObjectRef, (
     (JSContextRef,                    "ctx"), 
     (JSObjectRef,                     "object"), 
-    (ctypes.c_size_t,                  "argumentCount"), 
+    (ctypes.c_size_t,                 "argumentCount"), 
     (ctypes.POINTER(JSValueRef),      "arguments"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
@@ -922,7 +922,7 @@ _defineFunction("JSObjectCallAsFunction", JSValueRef, (
     (JSContextRef,                    "ctx"), 
     (JSObjectRef,                     "object"), 
     (JSObjectRef,                     "thisObject"), 
-    (ctypes.c_size_t,                  "argumentCount"), 
+    (ctypes.c_size_t,                 "argumentCount"), 
     (ctypes.POINTER(JSValueRef),      "arguments"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
@@ -958,7 +958,7 @@ _defineFunction("JSObjectGetProperty", JSValueRef, (
 _defineFunction("JSObjectGetPropertyAtIndex", JSValueRef, (
     (JSContextRef,                    "ctx"), 
     (JSObjectRef,                     "object"), 
-    (ctypes.c_uint,                    "propertyIndex"), 
+    (ctypes.c_uint,                   "propertyIndex"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
 
@@ -991,7 +991,7 @@ _defineFunction("JSObjectIsFunction", ctypes.c_int, (
 _defineFunction("JSObjectMake", JSObjectRef, (
     (JSContextRef,                    "ctx"), 
     (JSClassRef,                      "jsClass"), 
-    (ctypes.c_void_p,                  "data"), 
+    (ctypes.c_void_p,                 "data"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1005,11 +1005,11 @@ _defineFunction("JSObjectMakeConstructor", JSObjectRef, (
 _defineFunction("JSObjectMakeFunction", JSObjectRef, (
     (JSContextRef,                    "ctx"), 
     (JSStringRef,                     "name"), 
-    (ctypes.c_uint,                    "parameterCount"), 
+    (ctypes.c_uint,                   "parameterCount"), 
     (ctypes.POINTER(JSStringRef),     "parameterNames"), 
     (JSStringRef,                     "body"), 
     (JSStringRef,                     "sourceURL"), 
-    (ctypes.c_int,                     "startingLineNumber"), 
+    (ctypes.c_int,                    "startingLineNumber"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
 
@@ -1023,7 +1023,7 @@ _defineFunction("JSObjectMakeFunctionWithCallback", JSObjectRef, (
 #-------------------------------------------------------------------
 _defineFunction("JSObjectSetPrivate", ctypes.c_int, (
     (JSObjectRef,                     "object"), 
-    (ctypes.c_void_p,                  "data"), 
+    (ctypes.c_void_p,                 "data"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1040,7 +1040,7 @@ _defineFunction("JSObjectSetProperty", None, (
 _defineFunction("JSObjectSetPropertyAtIndex", None, (
     (JSContextRef,                    "ctx"), 
     (JSObjectRef,                     "object"), 
-    (ctypes.c_uint,                    "propertyIndex"), 
+    (ctypes.c_uint,                   "propertyIndex"), 
     (JSValueRef,                      "value"), 
     (ctypes.POINTER(JSValueRef),      "exception"), 
 ))
@@ -1066,7 +1066,7 @@ _defineFunction("JSPropertyNameArrayGetCount", ctypes.c_size_t, (
 #-------------------------------------------------------------------
 _defineFunction("JSPropertyNameArrayGetNameAtIndex", JSStringRef, (
     (JSPropertyNameArrayRef,          "array"), 
-    (ctypes.c_size_t,                  "index"), 
+    (ctypes.c_size_t,                 "index"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1086,7 +1086,7 @@ _defineFunction("JSPropertyNameArrayRetain", JSPropertyNameArrayRef, (
 #-------------------------------------------------------------------
 _defineFunction("JSStringCreateWithCharacters", JSStringRef, (
     (ctypes.POINTER(JSChar),          "chars"), 
-    (ctypes.c_size_t,                  "numChars"), 
+    (ctypes.c_size_t,                 "numChars"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1112,8 +1112,8 @@ _defineFunction("JSStringGetMaximumUTF8CStringSize", ctypes.c_size_t, (
 #-------------------------------------------------------------------
 _defineFunction("JSStringGetUTF8CString", ctypes.c_size_t, (
     (JSStringRef,                     "string"), 
-    (ctypes.c_char_p,                  "buffer"), 
-    (ctypes.c_size_t,                  "bufferSize"), 
+    (ctypes.c_char_p,                 "buffer"), 
+    (ctypes.c_size_t,                 "bufferSize"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1125,7 +1125,7 @@ _defineFunction("JSStringIsEqual", ctypes.c_int, (
 #-------------------------------------------------------------------
 _defineFunction("JSStringIsEqualToUTF8CString", ctypes.c_int, (
     (JSStringRef,                     "a"), 
-    (ctypes.c_char_p,                  "b"), 
+    (ctypes.c_char_p,                 "b"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1217,7 +1217,7 @@ _defineFunction("JSValueIsUndefined", ctypes.c_int, (
 #-------------------------------------------------------------------
 _defineFunction("JSValueMakeBoolean", JSValueRef, (
     (JSContextRef,                    "ctx"), 
-    (ctypes.c_int,                     "boolean"), 
+    (ctypes.c_int,                    "boolean"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1228,7 +1228,7 @@ _defineFunction("JSValueMakeNull", JSValueRef, (
 #-------------------------------------------------------------------
 _defineFunction("JSValueMakeNumber", JSValueRef, (
     (JSContextRef,                    "ctx"), 
-    (ctypes.c_double,                  "number"), 
+    (ctypes.c_double,                 "number"), 
 ))
 
 #-------------------------------------------------------------------
@@ -1286,7 +1286,7 @@ _defineFunction("JSValueUnprotect", None, (
 #-------------------------------------------------------------------
 
 #-------------------------------------------------------------------
-def _print_help():
+def _printHelp():
     program = os.path.basename(sys.argv[0])
     help = """
 %(program)s %(version)s
@@ -1303,41 +1303,24 @@ OPTIONS
    -f script-file       filename of JavaScript source to execute
    
 The -e and -f options may be used multiple times, the scripts will be
-executed in order.  A filename MUST be specified, and arguments are 
-of course optional.  You may use - as the file name, in which case
-input will be read from stdin.
+executed in order.  If no script is specified, a REPL will be run.
+You may use - as the file name, in which case input will be read from stdin.
 """ % { "program": program, "version": __version__ }
 
     print help.strip()
     sys.exit(1)
 
 #-------------------------------------------------------------------
-class _ScriptSource(object):
-    
-    def __init__(self):
-        self.string   = None
-        self.filename = "<literal>"
-    
-    def get_string(self):
-        return self.string
-        
-    def get_filename(self):
-        return self.filename
-    
-#-------------------------------------------------------------------
-class _ScriptString(_ScriptSource):
+class _ScriptString:
     
     def __init__(self, string):
-        super(_ScriptSource, self).__init__()
-        
-        self.string = string
+        self.string   = string
+        self.filename = "<literal>"
         
 #-------------------------------------------------------------------
-class _ScriptFile(_ScriptSource):
+class _ScriptFile:
     
     def __init__(self, filename):
-        super(_ScriptSource, self).__init__()
-        
         self.filename = filename
         if (filename == "-"): 
             self.filename = "<stdin>"
@@ -1348,10 +1331,10 @@ class _ScriptFile(_ScriptSource):
         ifile.close()
 
 #-------------------------------------------------------------------
-def _parse_args():
+def _parseArgs():
     scripts   = []
     arguments = []
-    use_repl  = False
+    useRepl  = False
 
     args = sys.argv[1:]
     
@@ -1365,7 +1348,7 @@ def _parse_args():
             
         else:
             if arg in ("-?", "--?", "-h", "--h", "-help", "--help"):
-                _print_help()
+                _printHelp()
                 
             elif arg == "-e":
                 source = args.pop(0)
@@ -1375,7 +1358,7 @@ def _parse_args():
                 source = args.pop(0)
                 
                 if source == "-":
-                    use_repl = True
+                    useRepl = True
                 else:
                     scripts.append(_ScriptFile(source))
             
@@ -1383,10 +1366,10 @@ def _parse_args():
                 in_options = False
                 scripts.append(_ScriptFile(arg))
             
-    return (scripts, arguments, use_repl)
+    return (scripts, arguments, useRepl)
 
 #-------------------------------------------------------------------------------
-def _callback_print(context, function, thisObject, args):
+def _callbackPrint(context, function, thisObject, args):
 #    if True: return
     _log("$f(%s, %s, %s, %s)", (context, function, thisObject, args))
 
@@ -1403,34 +1386,33 @@ def _callback_print(context, function, thisObject, args):
     return JSValueRef.makeUndefined(context)
 
 #-------------------------------------------------------------------------------
-def _handle_JSException(e, context):
+def _handleJSException(e, context):
 
     e = e.value.asJSObjectRef()
     
-    def getDefault(context, object, property, default):
-        if not object.hasProperty(context, property):
+    def getDefault(context, obj, property, default):
+        if not obj.hasProperty(context, property):
             return default
             
-        val = object.getProperty(context, property)
-        val_str_ref = object.toString(context)
-        return val_str_ref.toString(context)
+        val = obj.getProperty(context, property)
+        return val.toString(context)
     
     name      = getDefault(context, e, "name",      "???")
     message   = getDefault(context, e, "message",   "???") 
     sourceURL = getDefault(context, e, "sourceURL", "???")
     line      = getDefault(context, e, "line",      "???")
 
-    print "Exception thrown: %s: %s: at %s[%d]" % (name, message, sourceURL, line)
+    print "Exception thrown: %s: %s: at %s[%s]" % (name, message, sourceURL, line)
 
     props = e.getPropertyNames(context)
-    known_props = "name message sourceURL line".split()
+    knownProps = "name message sourceURL line".split()
     for prop in props:
-        if prop in known_props: continue
+        if prop in knownProps: continue
 
-        val = object.getProperty(context, property)
-        val_str_ref = object.toString(context)
+        val = e.getProperty(context, prop)
+        valStr = val.toString(context)
         
-        print "   %s: %s" % (prop, val_str_ref.toString())
+        print "   %s: %s" % (prop, valStr)
         
     print
     
@@ -1440,10 +1422,10 @@ def _main():
     #---------------------------------------------------------------
     # parse arguments
     #---------------------------------------------------------------
-    (scripts, arguments, use_repl) = _parse_args()
+    (scripts, arguments, useRepl) = _parseArgs()
     
     if len(scripts) == 0: 
-        use_repl = True
+        useRepl = True
     
     #---------------------------------------------------------------
     # start processing        
@@ -1456,60 +1438,79 @@ def _main():
     #---------------------------------------------------------------
     # add builtins
     #---------------------------------------------------------------
-    function = context.makeFunction(None, _callback_print)
+    function = context.makeFunction(None, _callbackPrint)
     globalObject.setProperty(context, "print", function)
     
     #---------------------------------------------------------------
     # add arguments
     #---------------------------------------------------------------
-    js_args = context.eval("[]").asJSObjectRef()
-    js_args.protect(context)
+    jsArgs = context.eval("[]").asJSObjectRef()
+    jsArgs.protect(context)
+    
+    if len(scripts) > 0:
+        executable = scripts[-1].filename
+    else:
+        executable = "<stdin>"
+        
+    val = JSStringRef.create(executable)
+    jsArgs.setPropertyAtIndex(context, 0, JSValueRef.makeString(context,val))
+    val.release()
+    
     for i, argument in enumerate(arguments):
         val = JSStringRef.create(argument)
-        js_args.setPropertyAtIndex(context, i, JSValueRef.makeString(context,val))
-#        val.release()
+        jsArgs.setPropertyAtIndex(context, i+1, JSValueRef.makeString(context,val))
+        val.release()
         
-    globalObject.setProperty(context, "arguments", js_args)
-#    js_args.unprotect(context)
+    globalObject.setProperty(context, "arguments", jsArgs)
+    jsArgs.unprotect(context)
     
     #---------------------------------------------------------------
     # add environment
     #---------------------------------------------------------------
-    js_env = context.eval("({})").asJSObjectRef()
-    js_env.protect(context)
-    val = JSStringRef.create("val")
-    js_env.setProperty(context, "key", JSValueRef.makeString(context,val))
+    jsEnv = context.eval("({})").asJSObjectRef()
+    jsEnv.protect(context)
 
     for key, val in os.environ.iteritems():
         val = JSStringRef.create(val)
-        js_env.setProperty(context, key, JSValueRef.makeString(context,val))
+        jsEnv.setProperty(context, key, JSValueRef.makeString(context,val))
         val.release()
     
-    globalObject.setProperty(context, "environment", js_env)
-#    js_env.unprotect(context)
+    globalObject.setProperty(context, "environment", jsEnv)
+    jsEnv.unprotect(context)
     
     #---------------------------------------------------------------
     # run scripts
     #---------------------------------------------------------------
     for script in scripts:
         try:
-            result = context.eval(script.get_string(), None, script.get_filename(), 1)
+            result = context.eval(script.string, None, script.filename, 1)
         except JSException, e:
-            _handle_JSException(e, context)
+            _handleJSException(e, context)
             break
             
     #---------------------------------------------------------------
     # run repl
     #---------------------------------------------------------------
-    if use_repl:
+    if useRepl:
         
-        line = sys.stdin.readline()
-        while line != "":
+        program = os.path.basename(sys.argv[0])
+        print "%s %s" % (program, __version__)
+        
+        while True:
+            sys.stdout.write(">>> ")
+            line = sys.stdin.readline()
+            if line == "": break
+            
             line = line.strip()
-            try:
-                result = context.eval(line, None, "<repl>", 1)
-            except JSException, e:
-                _handle_JSException(e, context)
+            if line:
+                try:
+                    result = context.eval(line, None, "<repl>", 1)
+                    
+                    if not result.isUndefined(context):
+                        resultStr = result.toString(context)
+                        print resultStr
+                except JSException, e:
+                    _handleJSException(e, context)
             
     globalObject.unprotect(context)
     context.release()
