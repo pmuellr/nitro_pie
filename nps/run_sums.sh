@@ -10,4 +10,4 @@ echo
 echo ---------------------------------------------------
 echo JavaScriptCore
 echo ---------------------------------------------------
-time python nps.py sum.js
+time python ../lib/nitro-pie.py sum.js
