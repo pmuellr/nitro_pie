@@ -44,7 +44,7 @@ def sum_callback(ctx, function, thisObject, args):
     for arg in args:
         sum += arg.toNumber(ctx)
         
-    result = JSValueRef.makeNumber(ctx,sum)
+    result = ctx.makeNumber(sum)
     
     return result
 

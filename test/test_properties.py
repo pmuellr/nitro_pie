@@ -113,12 +113,12 @@ class Test(unittest.TestCase):
         o = ctx.eval("({})").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
 
-        o.setProperty(ctx, "a", JSValueRef.makeNumber(ctx,1))        
-        o.setProperty(ctx, "b", JSValueRef.makeNumber(ctx,3.3))        
-        o.setProperty(ctx, "c", JSValueRef.makeBoolean(ctx,True))
-        o.setProperty(ctx, "d", JSValueRef.makeBoolean(ctx,False))
-        o.setProperty(ctx, "e", JSValueRef.makeNull(ctx))
-        o.setProperty(ctx, "f", JSValueRef.makeUndefined(ctx))        
+        o.setProperty(ctx, "a", ctx.makeNumber(1))        
+        o.setProperty(ctx, "b", ctx.makeNumber(3.3))        
+        o.setProperty(ctx, "c", ctx.makeBoolean(True))
+        o.setProperty(ctx, "d", ctx.makeBoolean(False))
+        o.setProperty(ctx, "e", ctx.makeNull())
+        o.setProperty(ctx, "f", ctx.makeUndefined())        
         for prop in "a b".split():
             self.assertTrue(o.hasProperty(ctx, prop))
         
@@ -171,12 +171,12 @@ class Test(unittest.TestCase):
         o = ctx.eval("[]").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
 
-        o.setPropertyAtIndex(ctx, 0, JSValueRef.makeNumber(ctx,1))        
-        o.setPropertyAtIndex(ctx, 1, JSValueRef.makeNumber(ctx,3.3))        
-        o.setPropertyAtIndex(ctx, 2, JSValueRef.makeBoolean(ctx,True))
-        o.setPropertyAtIndex(ctx, 3, JSValueRef.makeBoolean(ctx,False))        
-        o.setPropertyAtIndex(ctx, 4, JSValueRef.makeNull(ctx))        
-        o.setPropertyAtIndex(ctx, 5, JSValueRef.makeUndefined(ctx))        
+        o.setPropertyAtIndex(ctx, 0, ctx.makeNumber(1))        
+        o.setPropertyAtIndex(ctx, 1, ctx.makeNumber(3.3))        
+        o.setPropertyAtIndex(ctx, 2, ctx.makeBoolean(True))
+        o.setPropertyAtIndex(ctx, 3, ctx.makeBoolean(False))        
+        o.setPropertyAtIndex(ctx, 4, ctx.makeNull())        
+        o.setPropertyAtIndex(ctx, 5, ctx.makeUndefined())        
         
         self.assertEquals(1,           o.getPropertyAtIndex(ctx, 0).toNumber(ctx))
         self.assertEquals(3.3,         o.getPropertyAtIndex(ctx, 1).toNumber(ctx))
@@ -191,10 +191,10 @@ class Test(unittest.TestCase):
 
         o = ctx.eval("({})").asJSObjectRef(ctx)
         
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeReadOnly)
+        o.setProperty(ctx, "x", ctx.makeNumber( 111), JSObjectRef.kJSPropertyAttributeReadOnly)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))
+        o.setProperty(ctx, "x", ctx.makeNumber( 222))
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
         self.assertTrue(ctx, "x" in o.getPropertyNames(ctx))
@@ -209,10 +209,10 @@ class Test(unittest.TestCase):
 
         o = ctx.eval("({})").asJSObjectRef(ctx)
 
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeDontEnum)
+        o.setProperty(ctx, "x", ctx.makeNumber( 111), JSObjectRef.kJSPropertyAttributeDontEnum)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))
+        o.setProperty(ctx, "x", ctx.makeNumber( 222))
         self.assertEquals(222, o.getProperty(ctx, "x").toNumber(ctx))
         
         self.assertTrue("x" not in o.getPropertyNames(ctx))
@@ -225,10 +225,10 @@ class Test(unittest.TestCase):
         ctx = self.ctx
 
         o = ctx.eval("({})").asJSObjectRef(ctx)
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeDontDelete)
+        o.setProperty(ctx, "x", ctx.makeNumber( 111), JSObjectRef.kJSPropertyAttributeDontDelete)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))
+        o.setProperty(ctx, "x", ctx.makeNumber( 222))
         self.assertEquals(222, o.getProperty(ctx, "x").toNumber(ctx))
         
         self.assertTrue("x" in o.getPropertyNames(ctx))

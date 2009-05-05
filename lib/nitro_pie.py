@@ -97,6 +97,11 @@ class JSContextRef(ctypes.c_void_p):
     
     <p>These methods call functions defined in 
     &[JSContextRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html].
+    
+    <p>Instances of this class are not created directly; instead
+    use the <strong>create()</strong> method of #[JSGlobalContextRef]
+    class.
+    
     """
     functions = []
     
@@ -104,7 +109,7 @@ class JSContextRef(ctypes.c_void_p):
     def getGlobalObject(self):
         """Returns the global object associated with a context.
         
-        @returns #[JSValueRef]
+        @returns (#[JSValueRef]) the global object associated with the context
         """
         _log("JSContextRef.$f(%s)", (self,))
         result = _JSContextGetGlobalObject(self)
@@ -115,7 +120,7 @@ class JSContextRef(ctypes.c_void_p):
         """Runs the garbage collector.
         
         The garbage collector does *[need] to be run explicitly,
-        but can.
+        but can be by invoking this method.
         """
         _log("JSContextRef.$f(%s)", (self,))
         return _JSGarbageCollect(self)
@@ -124,15 +129,21 @@ class JSContextRef(ctypes.c_void_p):
     def eval(self, script, thisObject=None, sourceURL=None, startingLineNumber=1):
         """Evaluate a string of JavaScript code.
         
-        @returns (#[JSValueRef]) The value of executing the script.
+        @returns (#[JSValueRef]) 
+                 the value of executing the script.
         
         @param script             (str | unicode | #[JSStringRef])
+               the script to execute
         @param thisObject         (#[JSObjectRef])
+               the object to act as $[this] when the script executes
         @param sourceURL          (str | unicode | #[JSStringRef])
+               the name of the script
         @param startingLineNumber (int)
+               the line of the source the script starts on
         
-        @throws (#[JSException])  When a JavaScript exception occurs
-            during the processing of the script
+        @throws (#[JSException])  
+                raised when a JavaScript exception occurs
+                during the processing of the script
         """
         _log("JSContextRef.$f(%s, '%s', %s, '%s', %s)", (self, script, thisObject, sourceURL, startingLineNumber))
         if thisObject:         assert isinstance(context,            JSObjectRef),   "Expecting a JSValueRef for the thisObject parameter"
@@ -170,6 +181,22 @@ class JSContextRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def checkScriptSyntax(self, script, sourceURL=None, startingLineNumber=1):
+        """Check the script syntax of a string of JavaScript code.
+        
+        @returns (boolean) 
+                 whether the script is syntactically correct
+        
+        @param script             (str | unicode | #[JSStringRef])
+               the script to execute
+        @param sourceURL          (str | unicode | #[JSStringRef])
+               the name of the script
+        @param startingLineNumber (int)
+               the line of the source the script starts on
+        
+        @throws (#[JSException])  
+                raised when a JavaScript exception occurs
+                during the processing of the script
+        """
         _log("JSContextRef.$f(%s, '%s', '%s', %s)", (self, script, sourceURL, startingLineNumber))
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
     
@@ -198,6 +225,17 @@ class JSContextRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def makeFunction(self, name, function):
+        """Creates a JavaScript function implemented in Python.
+        
+        @return (#[JSObjectRef])
+                the JavaScript function just created
+        
+        @param name (str | unicode | #[JSStringRef])
+               the name of the function
+        
+        @param function (callable)
+               the Python function that implements the JavaScript function
+        """
         _log("JSContextRef.$f(%s, '%s', %s)", (self, name, function))
         assert callable(function), "Expecting a function for the function parameter"
         
@@ -229,9 +267,66 @@ class JSContextRef(ctypes.c_void_p):
         
         return result
     
+    #----------------------------------------------------------------
+    def makeBoolean(self, value):
+        """Creates a new JavaScript boolean value.
+        
+        @return (#[JSValueRef]) the value created
+        @param value (boolean) the boolean value to create
+        """
+        _log("JSContextRef.$f(%s, %s)", (self, value))
+
+        return _JSValueMakeBoolean(self, value)
+
+    #----------------------------------------------------------------
+    def makeNull(self):
+        """Creates a new JavaScript null value.
+        
+        @return (#[JSValueRef]) the value created
+        """
+        _log("JSContextRef.$f(%s)", (self,))
+
+        return _JSValueMakeNull(self)
+
+    #----------------------------------------------------------------
+    def makeNumber(self, number):
+        """Creates a new JavaScript number value.
+        
+        @return (#[JSValueRef]) the value created
+        @param number (int |float) the number value to create
+        """
+        _log("JSContextRef.$f(%s, %s)", (self, number))
+
+        return _JSValueMakeNumber(self, number)
+
+    #----------------------------------------------------------------
+    def makeString(self, string):
+        """Creates a new JavaScript string value.
+        
+        @return (#[JSValueRef]) the value created
+        @param string (#[JSStringRef]) the string value to create
+        """
+        _log("JSContextRef.$f(%s, %s)", (self, string))
+        assert isinstance(string,  JSStringRef),  "Expecting a JSStringRef for the string parameter"
+
+        return _JSValueMakeString(self, string)
+
+    #----------------------------------------------------------------
+    def makeUndefined(self):
+        """Creates a new JavaScript undefined value.
+        
+        @return (#[JSValueRef]) the value created
+        """
+        _log("JSContextRef.$f(%s)", (self,))
+
+        return _JSValueMakeUndefined(self)
+
+    
 #--------------------------------------------------------------------
 class JSGlobalContextRef(JSContextRef):
     """Models the JSGlobalContextRef type.
+
+    <p>This class is a subclass of #[JSContextRef].
     
     <p>These methods call functions defined in 
     &[JSContextRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html].
@@ -240,16 +335,24 @@ class JSGlobalContextRef(JSContextRef):
     #----------------------------------------------------------------
     @staticmethod
     def create():
+        """Create a new instance of this class.
+        
+        @return (#[JSGlobalContextRef]) the new instance
+        """
         _log("JSGlobalContextRef.$f()")
         return _JSGlobalContextCreate(None)
         
     #----------------------------------------------------------------
     def release(self):
+        """Release this context
+        """
         _log("JSGlobalContextRef.$f(%s)", (str(self),))
         return _JSGlobalContextRelease(self)
     
     #----------------------------------------------------------------
     def retain(self):
+        """Retain this context
+        """
         _log("JSGlobalContextRef.$f(%s)", (str(self),))
         return _JSGlobalContextRetain(self)
     
@@ -265,6 +368,18 @@ class JSStringRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     @staticmethod
     def asRef(string):
+        """Creates an instance of this class from a string.
+        
+        Slightly different from create, this function may 
+        also be passed an instance of this class and it
+        will then simply return itself.  
+        
+        @returns (#[JSStringRef])
+                 the #[JSStringRef] created (or passed in)
+                 
+        @param (str | unicode | #[JSStringRef])
+               the object to convert to a #[JSStringRef]
+        """
         if not string: return string
         if isinstance(string, JSStringRef): return string
         
@@ -273,6 +388,17 @@ class JSStringRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     @staticmethod
     def create(string):
+        """Creates an instance of this class from a string.
+        
+        The caller is responsible for freeing this string
+        with the #[release()] method when no longer needed.
+        
+        @returns (#[JSStringRef])
+                 the #[JSStringRef] created
+                 
+        @param (str | unicode)
+               the object to convert to a #[JSStringRef]
+        """
         _log("JSStringRef.$f('%s')", (string,))
     
         if isinstance(string, str):
@@ -296,6 +422,11 @@ class JSStringRef(ctypes.c_void_p):
 
     #----------------------------------------------------------------
     def toString(self):
+        """Convert this object to a Python string.
+        
+        @returns (str)
+                 always returns a UTF-8 encoding of the string
+        """
         _log("JSStringRef.$f(%s)", (self,))
         
         len    = _JSStringGetMaximumUTF8CStringSize(self) + 1
@@ -309,12 +440,16 @@ class JSStringRef(ctypes.c_void_p):
 
     #----------------------------------------------------------------
     def retain(self):
+        """Retain this instance.
+        """
         _log("JSStringRef.$f(%s)", (self,))
     
         _JSStringRetain(self)
         
     #----------------------------------------------------------------
     def release(self):
+        """Retain this instance.
+        """
         _log("JSStringRef.$f(%s)", (self,))
         
         _JSStringRelease(self)
@@ -325,6 +460,17 @@ class JSValueRef(ctypes.c_void_p):
     
     <p>These methods call functions defined in 
     &[JSValueRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSValueRef/index.html].
+    
+    This class also defines the following constants, returned
+    from the $[getType()] method.
+    <ul>
+    <li><code>kJSTypeUndefined</code>
+    <li><code>kJSTypeNull</code>
+    <li><code>kJSTypeBoolean</code>
+    <li><code>kJSTypeNumber</code>
+    <li><code>kJSTypeString</code>
+    <li><code>kJSTypeObject</code>
+    </ul>
     """
 
     kJSTypeUndefined = 0
@@ -335,48 +481,20 @@ class JSValueRef(ctypes.c_void_p):
     kJSTypeObject    = 5 
 
     #----------------------------------------------------------------
-    @staticmethod
-    def makeBoolean(context, value):
-        _log("JSValueRef.$f(%s, %s)", (context, value))
-        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-
-        return _JSValueMakeBoolean(context, value)
-
-    #----------------------------------------------------------------
-    @staticmethod
-    def makeNull(context):
-        _log("JSValueRef.$f(%s)", (context,))
-        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-
-        return _JSValueMakeNull(context)
-
-    #----------------------------------------------------------------
-    @staticmethod
-    def makeNumber(context, number):
-        _log("JSValueRef.$f(%s, %s)", (context, number))
-        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-
-        return _JSValueMakeNumber(context, number)
-
-    #----------------------------------------------------------------
-    @staticmethod
-    def makeString(context, string):
-        _log("JSValueRef.$f(%s, %s)", (context, string))
-        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-        assert isinstance(string,  JSStringRef),  "Expecting a JSStringRef for the string parameter"
-
-        return _JSValueMakeString(context, string)
-
-    #----------------------------------------------------------------
-    @staticmethod
-    def makeUndefined(context):
-        _log("JSValueRef.$f(%s)", (context,))
-        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-
-        return _JSValueMakeUndefined(context)
-
-    #----------------------------------------------------------------
     def asJSObjectRef(self, context):
+        """Attempts to cast this object as a #[JSObjectRef]
+        
+        Many values returned from APIs in this module are typed
+        as #[JSValueRef], but are actually typed as #[JSObjectRef]
+        instance.  This method will cast them to #[JSObjectRef] so
+        you can use those methods on the object.
+        
+        Primitive values and strings cannot be recast.
+        
+        @param context (#[JSContextRef]) 
+        @throws (TypeError)
+                raised if the object cannot be recast.
+        """
         _log("JSValueRef.$f(%s)", (self,))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -391,6 +509,14 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def getType(self, context):
+        """Returns the type of the value.
+        
+        @returns (int) 
+                 One of the <code>kJSType</code> constants defined in
+                 this class.
+        @param context (#[JSContextRef]) 
+        """
+        
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -398,6 +524,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isBoolean(self, context):
+        """Returns whether this value is a boolean.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -405,6 +536,13 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isEqual(self, context, other):
+        """Returns whether this value is equal to another value.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        @param other (#[JSValueRef) 
+               the value to compare against
+        """
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
         assert isinstance(context, JSContextRef),  "Expecting a JSContextRef for the context parameter"
         assert isinstance(other, JSValueRef),      "Expecting a JSValueRef for the other parameter"
@@ -413,6 +551,14 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isInstanceOf(self, context, constructor):
+        """Returns whether this value is an instance of a constructor.
+        
+        @param constructor (#[JSValueRef) 
+               the constructor to test against
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, constructor))
         assert isinstance(context,     JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(constructor, JSValueRef),   "Expecting a JSValueRef for the constructor parameter"
@@ -421,6 +567,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isNull(self, context):
+        """Returns whether this value is null.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -428,6 +579,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isNumber(self, context):
+        """Returns whether this value is a number.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -435,6 +591,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isObject(self, context):
+        """Returns whether this value is a non-primitive object.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -442,6 +603,13 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isStrictEqual(self, context, other):
+        """Returns whether this value is strictly equal to another value.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        @param other (#[JSValueRef) 
+               the value to compare against
+        """
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(other,   JSValueRef),   "Expecting a JSValueRef for the other parameter"
@@ -450,6 +618,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isString(self, context):
+        """Returns whether this value is a string.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -457,6 +630,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def isUndefined(self, context):
+        """Returns whether this value is undefined.
+        
+        @returns (boolean) indicator
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -464,6 +642,10 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def protect(self, context):
+        """Protect this value from garbage collection.
+        
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -471,6 +653,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def toBoolean(self, context):
+        """Convert this value to a boolean.
+        
+        @returns (boolean) the converted value
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -478,6 +665,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def toNumber(self, context):
+        """Convert this value to a number.
+        
+        @returns (float) the converted value
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -485,6 +677,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def toObject(self, context):
+        """Convert this value to an object.
+        
+        @returns (#[JSObject]) the converted value
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -493,6 +690,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def toStringRef(self, context):
+        """Convert this value to a JSStringRef.
+        
+        @returns (#[JSStringRef]) the converted value
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -500,6 +702,11 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def toString(self, context):
+        """Convert this value to a string.
+        
+        @returns (str) the converted value (utf-8 encoded string)
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -511,6 +718,10 @@ class JSValueRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def unprotect(self, context):
+        """Remove the protect of this value from garbage collection.
+
+        @param context (#[JSContextRef]) 
+        """
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -525,6 +736,16 @@ class JSObjectRef(JSValueRef):
     
     <p>This class is a subclass of #[JSValueRef], and so all of it's
     methods are available to instances of this class.
+    
+    <p>This class also defines the following constants, which can be
+    used in the $[setProperty()] method.
+    
+    <ul>
+    <li><code>kJSPropertyAttributeNone</code>
+    <li><code>kJSPropertyAttributeReadOnly</code>
+    <li><code>kJSPropertyAttributeDontEnum</code>
+    <li><code>kJSPropertyAttributeDontDelete</code>
+    </ul>
     """
 
     kJSPropertyAttributeNone       = 0
@@ -534,6 +755,12 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def deleteProperty(self, context, propertyName):
+        """Delete the property of an object.
+        
+        @returns (boolean) indicator of success
+        @param context      (#[JSContextRef]) 
+        @param propertyName (str | unicode | #[JSStringRef])
+        """
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -547,6 +774,12 @@ class JSObjectRef(JSValueRef):
         
     #----------------------------------------------------------------
     def getProperty(self, context, propertyName):
+        """Return the property of an object.
+        
+        @returns (#[JSValueRef]) value of the property
+        @param context      (#[JSContextRef]) 
+        @param propertyName (str | unicode | #[JSStringRef])
+        """
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -561,6 +794,12 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def getPropertyAtIndex(self, context, propertyIndex):
+        """Return the property of an array.
+        
+        @returns (#[JSValueRef]) value of the property
+        @param context       (#[JSContextRef]) 
+        @param propertyIndex (int)
+        """
         _log("JSObjectRef.$f(%s, %s, %s)", (self, propertyIndex, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(propertyIndex, int),    "Expecting an integer for the propertyIndex parameter"
@@ -571,6 +810,11 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def getPropertyNames(self, context):
+        """Return the names of the properties of the object
+        
+        @param context (#[JSContextRef]) 
+        @returns (list of str) the names of the properties of the object
+        """
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -590,6 +834,11 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def getPrototype(self, context):
+        """Return the prototype of the object
+        
+        @returns (#[JSValueRef) the prototype of the object
+        @param context (#[JSContextRef]) 
+        """
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -599,6 +848,12 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def hasProperty(self, context, propertyName):
+        """Return whether the object contains the specified property.
+        
+        @returns (boolean) indicator
+        @param context      (#[JSContextRef]) 
+        @param propertyName (str | unicode | #[JSStringRef])
+        """
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -612,6 +867,11 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def isConstructor(self, context):
+        """Return whether the object is a constructor.
+        
+        @returns (boolean) indicator
+        @param context      (#[JSContextRef]) 
+        """
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -619,6 +879,11 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def isFunction(self, context):
+        """Return whether the object is a function.
+        
+        @returns (boolean) indicator
+        @param context      (#[JSContextRef]) 
+        """
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -626,6 +891,14 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def setProperty(self, context, propertyName, value, attributes=kJSPropertyAttributeNone):
+        """Set the property of an object.
+        
+        @param context      (#[JSContextRef]) 
+        @param propertyName (str | unicode | #[JSStringRef])
+        @param value        (#[JSValueRef])
+        @param attributes   (int) 
+                            one of the kJSPropertyAttribute defined by this class
+        """
         _log("JSObjectRef.$f(%s, %s, %s, %s, %s)", (self, context, propertyName, value, attributes))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -642,6 +915,12 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def setPropertyAtIndex(self, context, propertyIndex, value):
+        """Set the property of an array.
+        
+        @param context       (#[JSContextRef]) 
+        @param propertyIndex (int)
+        @param value         (#[JSValueRef])
+        """
         _log("JSObjectRef.$f(%s, %s, %s, %s)", (self, context, propertyIndex, value))
         assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
         assert isinstance(propertyIndex, int),          "Expecting an integer for the propertyIndex parameter"
@@ -651,6 +930,11 @@ class JSObjectRef(JSValueRef):
 
     #----------------------------------------------------------------
     def setPrototype(self, context, prototype):
+        """Set the prototype of an object.
+        
+        @param context   (#[JSContextRef]) 
+        @param prototype (#[JSValueRef])
+        """
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, prototype))
         assert isinstance(context, JSContextRef),               "Expecting a JSContextRef for the context parameter"
         if prototype: assert isinstance(prototype, JSValueRef), "Expecting a JSValueRef for the prototype parameter"
@@ -659,9 +943,19 @@ class JSObjectRef(JSValueRef):
 
 #--------------------------------------------------------------------
 class JSException(Exception):
+    """Contains a JavaScript execution.
+    
+    This exception will be raised in cases where a JavaScript runtime
+    occurs.  The $[value] property will contain the value thrown from
+    JavaScript, typed as a #[JSValueRef].
+    """
 
     #----------------------------------------------------------------
     def __init__(self, value):
+        """Creates a new instance of this class.  
+        
+        Not intended to be called directly.
+        """
         self.value = value
         
     #----------------------------------------------------------------
@@ -858,8 +1152,8 @@ class JSLibrary:
     def getLibrary():
         """Return the JavaScriptCore library as a CDLL or equivalent.
         
-        @return ctypes.CDLL
-        The JavaScriptCore library in use.
+        @return (ctypes.CDLL) the JavaScriptCore library in use
+        @throws (Error) when the library cannot be loaded
         """
 
         if JSLibrary._library: return JSLibrary._library
@@ -1361,6 +1655,10 @@ OPTIONS
 The -e and -f options may be used multiple times, the scripts will be
 executed in order.  If no script is specified, a REPL will be run.
 You may use - as the file name, in which case input will be read from stdin.
+
+One additional function is available in the context which is created.
+The print() function takes any number of arguments, concatenates them,
+and prints them to stdout.
 """ % { "program": program, "version": __version__ }
 
     print help.strip()
@@ -1439,7 +1737,7 @@ def _callbackPrint(context, function, thisObject, args):
     print line
     _log("$f() <-")
     
-    return JSValueRef.makeUndefined(context)
+    return context.makeUndefined()
 
 #-------------------------------------------------------------------------------
 def _handleJSException(e, context):
@@ -1514,12 +1812,12 @@ def _main():
         executable = "<stdin>"
         
     val = JSStringRef.create(executable)
-    jsArgs.setPropertyAtIndex(context, 0, JSValueRef.makeString(context,val))
+    jsArgs.setPropertyAtIndex(context, 0, context.makeString(val))
     val.release()
     
     for i, argument in enumerate(arguments):
         val = JSStringRef.create(argument)
-        jsArgs.setPropertyAtIndex(context, i+1, JSValueRef.makeString(context,val))
+        jsArgs.setPropertyAtIndex(context, i+1, context.makeString(val))
         val.release()
         
     globalObject.setProperty(context, "arguments", jsArgs)
@@ -1533,7 +1831,7 @@ def _main():
 
     for key, val in os.environ.iteritems():
         val = JSStringRef.create(val)
-        jsEnv.setProperty(context, key, JSValueRef.makeString(context,val))
+        jsEnv.setProperty(context, key, context.makeString(val))
         val.release()
     
     globalObject.setProperty(context, "environment", jsEnv)

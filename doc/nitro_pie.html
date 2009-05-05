@@ -201,6 +201,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
+<li>2009-05-04 - Patrick Mueller - version 0.6</li>
 <li>2009-04-22 - Patrick Mueller - version 0.5</li>
 </ul>
 
@@ -221,7 +222,8 @@ of the C API for
 which is the JavaScript engine shipped with 
 <a href="http://webkit.org/">WebKit</a>.
 You may want to get familiarity with this framework before using
-this package in anger.  In lieu of that, examine the test cases.
+this package in anger.  In lieu of that, examine the test cases
+and the "main" runner in the module itself.
 
 <p>Note that the <code>nitro_pie</code> module does not currently expose
 all of the WebKit APIs.  It does expose enough to do some interesting
@@ -233,7 +235,6 @@ things.
 <p>The <code>nitro_pie</code> module is implemented in a single file,
 <code>nitro_pie.py</code>.  You can just copy this file into
 an appropriate directory to use with other Python code.
-
 
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
@@ -253,49 +254,54 @@ some real life usage.
 <code>JSContext</code> object, via the following invocation:
 
 <pre>
-context = JSContext()
+context = JSGlobalContextRef.create()
 </pre>
 
 <p>Once a context has been obtained, you can execute a script using
-<code>JSContext</code>'s <code>eval()</code> method:
+<code>JSContextRef</code>'s <code>eval()</code> method:
 
 <pre>
-result = context.eval(script, None, script_file_name, 1)
+result = context.eval(script)
 </pre>
 
 <p>The <code>eval()</code> method will return the result of evaluating
-JavaScript code, perhaps returning a <code>JSObject</code> instance
+JavaScript code, returning a <code>JSValueRef</code> instance
 that you can further noodle on.
 
 <p>To add a new function to a context that a script executes in,
-use the <code>JSContext</code> <code>makeFunctionWithCallback()</code> method,
+use the <code>JSContextRef</code> <code>makeFunction()</code> method,
 and then add it to the 'global' object of the context:
 
 <pre>
 context = JSGlobalContextRef.create()
     
 globalObject = context.getGlobalObject()
-function = context.makeFunction(None, callbackPrint)
+function = context.makeFunction("print", callbackPrint)
 globalObject.setProperty(context, "print", function)
 </pre>
 
-<p>The second argument to the <code>makeFunctionWithCallback()</code> method
+<p>The third argument to the <code>makeFunction()</code> method
 is a Python callable, which should have the following signature:
 
 <pre>
 def callback_print(context, function, thisObject, args)
 </pre>
 
-<p>The <code>context</code> parameter is the context that the function
-was invoked within.
-The <code>function</code> parameter is the JavaScript function that is
-currently executing.
-The <code>thisObject</code> parameter is the <code>'this'</code> value
-for the invocation.
-The <code>args</code> parameter is the array of parameters passed
-to the function.  
+<p>The <code>context</code> parameter 
+(<code>JSContextRef</code>)
+is the context that the function was invoked within.
+The <code>function</code> parameter 
+(<code>JSObjectRef</code>)
+is the JavaScript function that is currently executing.
+The <code>thisObject</code> parameter 
+(<code>JSObjectRef</code>)
+is the <code>'this'</code> value for the invocation.
+The <code>args</code> parameter 
+(list of <code>JSValueRef</code>)
+is the array of parameters passed to the function.  
 
-<p>The function should return whatever value it needs to return.  Here's
+<p>The function should return whatever value it needs to return
+as a <code>JSValueRef</code>.  Here's
 an example of a function which prints it's arguments:
 
 <pre>
@@ -308,12 +314,12 @@ def callbackPrint(context, function, thisObject, args):
         
     print line
     
-    return JSValueRef.makeUndefined(context)
+    return context.makeUndefined()
 </pre>
 
 <p>There is currently no direct way of creating JavaScript objects or
 arrays other than the 'primitive' values specified in the table above.
-To do this indirectly, use <code>JSContext.eval()</code>.  For instance,
+To do this indirectly, use <code>JSContextRef.eval()</code>.  For instance,
 to create a new empty object, use:
 
 <pre>
@@ -327,6 +333,13 @@ object = context.eval("[]")
 </pre>
 
 <!-- ====================================================== -->
+<h2>Shell Usage</h2>
+
+<p><code>nitro_pie</code> can also be used as a command-line
+shell.  Invoke the module as a python program, using the
+<code>-h</code> option for more help.
+
+<!-- ====================================================== -->
 <h2>Module Reference</h2>
 
 <p>In general, the functions and methods in classes in this module
@@ -334,6 +347,12 @@ are veneers over the C APIs for JavaScriptCore as documented
 at the
 <a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
 available at the ADC.
+
+<p>Some functions/methods take one of 
+<code>str | unicode | JSStringRef</code>
+as a parameter.  In these cases, if you pass a <code>str</code>
+or <code>unicode</code> value in, a <code>JSStringRef</code>
+will be created and then destroyed during the call.
 
 <!-- ====================================================== -->
 <h3>Classes</h3>
@@ -345,9 +364,9 @@ available at the ADC.
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSStringRef'>JSStringRef</a></strong></code></td><td width=100%>Models the JSStringRef type.</td></tr>
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSValueRef'>JSValueRef</a></strong></code></td><td width=100%>Models the JSValueRef type.</td></tr>
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSObjectRef'>JSObjectRef</a></strong></code></td><td width=100%>Models the JSObjectRef type.</td></tr>
-<tr><td><code style='margin-left:2em'><strong><a href='#api.JSException'>JSException</a></strong></code></td><td width=100%><strong><span style='color:#F00'>No documentation available</span></strong></td></tr>
+<tr><td><code style='margin-left:2em'><strong><a href='#api.JSException'>JSException</a></strong></code></td><td width=100%>Contains a JavaScript execution.</td></tr>
 </table>
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSLibrary'>Class JSLibrary</a></h3>
 <div style='margin-left:2em'>
 <p>Manages the native JavaScriptCore library
@@ -376,12 +395,21 @@ available at the ADC.
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSLibrary.getLibrary'>getLibrary()</a></strong></code>
 <div style='margin-left:4em'>
+Return the JavaScriptCore library as a CDLL or equivalent.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>ctypes.CDLL</code></strong> -  the JavaScriptCore library in use
+</ul>
+<p><strong>Raises:</strong>
+<ul>
+<li><p><strong><code>Error</code></strong> -  when the library cannot be loaded
 
+</ul>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSContextRef'>Class JSContextRef</a></h3>
 <div style='margin-left:2em'>
 <p>Models the JSContextRef type.
@@ -389,54 +417,166 @@ available at the ADC.
     <p>These methods call functions defined in 
     <a href='http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html'>JSContextRef.h</a>.
     
+    <p>Instances of this class are not created directly; instead
+    use the <strong>create()</strong> method of <code><a href='#api.JSGlobalContextRef'>JSGlobalContextRef</a></code>
+    class.
+    
+    
 <p>
 <hr>
 <h4>Methods</h4>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSContextRef.checkScriptSyntax'>checkScriptSyntax(script, sourceURL = None, startingLineNumber = 1)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-<p><code><strong><a name='api.JSContextRef.eval'>eval(script, thisObject = None, sourceURL = None, startingLineNumber = 1)</a></strong></code>
-<div style='margin-left:4em'>
-
-<p><strong>Returns:</strong> <strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  The value of executing the script.
+Check the script syntax of a string of JavaScript code.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  
+                 whether the script is syntactically correct
+</ul>
 <p><strong>Parameters:</strong>
 <ul>
-<li><strong><code>script</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt> - 
-<li><strong><code>thisObject</code></strong> <tt>(<code><a href='#api.JSObjectRef'>JSObjectRef</a></code>)</tt> - 
-<li><strong><code>sourceURL</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt> - 
-<li><strong><code>startingLineNumber</code></strong> <tt>(int)</tt> - 
+<li><p><strong><code>script</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the script to execute
+<li><p><strong><code>sourceURL</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the name of the script
+<li><p><strong><code>startingLineNumber</code></strong> <tt>(int)</tt><br>
+               the line of the source the script starts on
 </ul>
 <p><strong>Raises:</strong>
 <ul>
-<li><strong><code><code><a href='#api.JSException'>JSException</a></code></code></strong> -   When a JavaScript exception occurs
-            during the processing of the script
+<li><p><strong><code><code><a href='#api.JSException'>JSException</a></code></code></strong> -   
+                raised when a JavaScript exception occurs
+                during the processing of the script
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.eval'>eval(script, thisObject = None, sourceURL = None, startingLineNumber = 1)</a></strong></code>
+<div style='margin-left:4em'>
+Evaluate a string of JavaScript code.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  
+                 the value of executing the script.
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>script</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the script to execute
+<li><p><strong><code>thisObject</code></strong> <tt>(<code><a href='#api.JSObjectRef'>JSObjectRef</a></code>)</tt><br>
+               the object to act as <code>this</code> when the script executes
+<li><p><strong><code>sourceURL</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the name of the script
+<li><p><strong><code>startingLineNumber</code></strong> <tt>(int)</tt><br>
+               the line of the source the script starts on
+</ul>
+<p><strong>Raises:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSException'>JSException</a></code></code></strong> -   
+                raised when a JavaScript exception occurs
+                during the processing of the script
 
 </ul>
 </div>
 <p><code><strong><a name='api.JSContextRef.garbageCollect'>garbageCollect()</a></strong></code>
 <div style='margin-left:4em'>
-
+Runs the garbage collector.<p>
         The garbage collector does <strong>need</strong> to be run explicitly,
-        but can.
+        but can be by invoking this method.
 
 </div>
 <p><code><strong><a name='api.JSContextRef.getGlobalObject'>getGlobalObject()</a></strong></code>
 <div style='margin-left:4em'>
+Returns the global object associated with a context.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the global object associated with the context
 
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makeBoolean'>makeBoolean(value)</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JavaScript boolean value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>value</code></strong> <tt>(boolean)</tt><br> the boolean value to create
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSContextRef.makeFunction'>makeFunction(name, function)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Creates a JavaScript function implemented in Python.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSObjectRef'>JSObjectRef</a></code></code></strong> - 
+                the JavaScript function just created
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>name</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the name of the function
+<li><p><strong><code>function</code></strong> <tt>(callable)</tt><br>
+               the Python function that implements the JavaScript function
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makeNull'>makeNull()</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JavaScript null value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makeNumber'>makeNumber(number)</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JavaScript number value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>number</code></strong> <tt>(int |float)</tt><br> the number value to create
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makeString'>makeString(string)</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JavaScript string value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>string</code></strong> <tt>(<code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br> the string value to create
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makeUndefined'>makeUndefined()</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JavaScript undefined value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
+
+</ul>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSGlobalContextRef'>Class JSGlobalContextRef</a></h3>
 <div style='margin-left:2em'>
 <p>Models the JSGlobalContextRef type.
+
+    <p>This class is a subclass of <code><a href='#api.JSContextRef'>JSContextRef</a></code>.
     
     <p>These methods call functions defined in 
     <a href='http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html'>JSContextRef.h</a>.
@@ -447,7 +587,12 @@ available at the ADC.
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSGlobalContextRef.create'>create()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Create a new instance of this class.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSGlobalContextRef'>JSGlobalContextRef</a></code></code></strong> -  the new instance
+
+</ul>
 </div>
 </div>
 <hr>
@@ -455,16 +600,16 @@ available at the ADC.
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSGlobalContextRef.release'>release()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Release this context<p>
 </div>
 <p><code><strong><a name='api.JSGlobalContextRef.retain'>retain()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Retain this context<p>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSStringRef'>Class JSStringRef</a></h3>
 <div style='margin-left:2em'>
 <p>Models the JSStringRef type.
@@ -478,11 +623,38 @@ available at the ADC.
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSStringRef.asRef'>asRef(string)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Creates an instance of this class from a string.<p>
+        Slightly different from create, this function may 
+        also be passed an instance of this class and it
+        will then simply return itself.  
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSStringRef'>JSStringRef</a></code></code></strong> - 
+                 the <code><a href='#api.JSStringRef'>JSStringRef</a></code> created (or passed in)
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>m</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+               the object to convert to a <code><a href='#api.JSStringRef'>JSStringRef</a></code>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSStringRef.create'>create(string)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Creates an instance of this class from a string.<p>
+        The caller is responsible for freeing this string
+        with the <code><a href='#api.release()'>release()</a></code> method when no longer needed.
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSStringRef'>JSStringRef</a></code></code></strong> - 
+                 the <code><a href='#api.JSStringRef'>JSStringRef</a></code> created
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>m</code></strong> <tt>(str | unicode)</tt><br>
+               the object to convert to a <code><a href='#api.JSStringRef'>JSStringRef</a></code>
+
+</ul>
 </div>
 </div>
 <hr>
@@ -490,20 +662,26 @@ available at the ADC.
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSStringRef.release'>release()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Retain this instance.<p>
 </div>
 <p><code><strong><a name='api.JSStringRef.retain'>retain()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Retain this instance.<p>
 </div>
 <p><code><strong><a name='api.JSStringRef.toString'>toString()</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this object to a Python string.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>str</code></strong> - 
+                 always returns a UTF-8 encoding of the string
+
+</ul>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSValueRef'>Class JSValueRef</a></h3>
 <div style='margin-left:2em'>
 <p>Models the JSValueRef type.
@@ -511,110 +689,266 @@ available at the ADC.
     <p>These methods call functions defined in 
     <a href='http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSValueRef/index.html'>JSValueRef.h</a>.
     
+    This class also defines the following constants, returned
+    from the <code>getType()</code> method.
+    <ul>
+    <li><code>kJSTypeUndefined</code>
+    <li><code>kJSTypeNull</code>
+    <li><code>kJSTypeBoolean</code>
+    <li><code>kJSTypeNumber</code>
+    <li><code>kJSTypeString</code>
+    <li><code>kJSTypeObject</code>
+    </ul>
+    
 <p>
-<hr>
-<h4>Static Methods</h4>
-<div style='margin-left:4em'>
-<p><code><strong><a name='api.JSValueRef.makeBoolean'>makeBoolean(context, value)</a></strong></code>
-<div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-<p><code><strong><a name='api.JSValueRef.makeNull'>makeNull(context)</a></strong></code>
-<div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-<p><code><strong><a name='api.JSValueRef.makeNumber'>makeNumber(context, number)</a></strong></code>
-<div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-<p><code><strong><a name='api.JSValueRef.makeString'>makeString(context, string)</a></strong></code>
-<div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-<p><code><strong><a name='api.JSValueRef.makeUndefined'>makeUndefined(context)</a></strong></code>
-<div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
-</div>
-</div>
 <hr>
 <h4>Methods</h4>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSValueRef.asJSObjectRef'>asJSObjectRef(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Attempts to cast this object as a <code><a href='#api.JSObjectRef'>JSObjectRef</a></code><p>
+        Many values returned from APIs in this module are typed
+        as <code><a href='#api.JSValueRef'>JSValueRef</a></code>, but are actually typed as <code><a href='#api.JSObjectRef'>JSObjectRef</a></code>
+        instance.  This method will cast them to <code><a href='#api.JSObjectRef'>JSObjectRef</a></code> so
+        you can use those methods on the object.
+
+        Primitive values and strings cannot be recast.
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+</ul>
+<p><strong>Raises:</strong>
+<ul>
+<li><p><strong><code>TypeError</code></strong> - 
+                raised if the object cannot be recast.
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.getType'>getType(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns the type of the value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>int</code></strong> -  
+                 One of the <code>kJSType</code> constants defined in
+                 this class.
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isBoolean'>isBoolean(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is a boolean.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isEqual'>isEqual(context, other)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is equal to another value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>other</code></strong> <tt>(#[JSValueRef)</tt><br> 
+               the value to compare against
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isInstanceOf'>isInstanceOf(context, constructor)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is an instance of a constructor.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>constructor</code></strong> <tt>(#[JSValueRef)</tt><br> 
+               the constructor to test against
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isNull'>isNull(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is null.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isNumber'>isNumber(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is a number.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isObject'>isObject(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is a non-primitive object.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isStrictEqual'>isStrictEqual(context, other)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is strictly equal to another value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>other</code></strong> <tt>(#[JSValueRef)</tt><br> 
+               the value to compare against
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isString'>isString(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is a string.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.isUndefined'>isUndefined(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Returns whether this value is undefined.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.protect'>protect(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Protect this value from garbage collection.<p>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.toBoolean'>toBoolean(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this value to a boolean.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  the converted value
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.toNumber'>toNumber(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this value to a number.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>float</code></strong> -  the converted value
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.toObject'>toObject(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this value to an object.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSObject'>JSObject</a></code></code></strong> -  the converted value
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.toString'>toString(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this value to a string.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>str</code></strong> -  the converted value (utf-8 encoded string)
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.toStringRef'>toStringRef(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Convert this value to a JSStringRef.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSStringRef'>JSStringRef</a></code></code></strong> -  the converted value
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSValueRef.unprotect'>unprotect(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Remove the protect of this value from garbage collection.<p>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSObjectRef'>Class JSObjectRef</a></h3>
 <div style='margin-left:2em'>
 <p>Models the JSObjectRef type.
@@ -625,68 +959,183 @@ available at the ADC.
     <p>This class is a subclass of <code><a href='#api.JSValueRef'>JSValueRef</a></code>, and so all of it's
     methods are available to instances of this class.
     
+    <p>This class also defines the following constants, which can be
+    used in the <code>setProperty()</code> method.
+    
+    <ul>
+    <li><code>kJSPropertyAttributeNone</code>
+    <li><code>kJSPropertyAttributeReadOnly</code>
+    <li><code>kJSPropertyAttributeDontEnum</code>
+    <li><code>kJSPropertyAttributeDontDelete</code>
+    </ul>
+    
 <p>
 <hr>
 <h4>Methods</h4>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSObjectRef.deleteProperty'>deleteProperty(context, propertyName)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Delete the property of an object.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator of success
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyName</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.getProperty'>getProperty(context, propertyName)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return the property of an object.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  value of the property
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyName</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.getPropertyAtIndex'>getPropertyAtIndex(context, propertyIndex)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return the property of an array.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  value of the property
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyIndex</code></strong> <tt>(int)</tt><br>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.getPropertyNames'>getPropertyNames(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return the names of the properties of the object<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>list of str</code></strong> -  the names of the properties of the object
+
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.getPrototype'>getPrototype(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return the prototype of the object<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>#[JSValueRef</code></strong> -  the prototype of the object
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.hasProperty'>hasProperty(context, propertyName)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return whether the object contains the specified property.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyName</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.isConstructor'>isConstructor(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return whether the object is a constructor.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.isFunction'>isFunction(context)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Return whether the object is a function.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code>boolean</code></strong> -  indicator
+</ul>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.setProperty'>setProperty(context, propertyName, value, attributes = 0)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Set the property of an object.<p>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyName</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+<li><p><strong><code>value</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br>
+<li><p><strong><code>attributes</code></strong> <tt>(int)</tt><br> 
+                            one of the kJSPropertyAttribute defined by this class
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.setPropertyAtIndex'>setPropertyAtIndex(context, propertyIndex, value)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Set the property of an array.<p>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>propertyIndex</code></strong> <tt>(int)</tt><br>
+<li><p><strong><code>value</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br>
+
+</ul>
 </div>
 <p><code><strong><a name='api.JSObjectRef.setPrototype'>setPrototype(context, prototype)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Set the prototype of an object.<p>
+<p><strong>Parameters:</strong>
+<ul>
+<li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
+<li><p><strong><code>prototype</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br>
+
+</ul>
 </div>
 </div>
 </div>
 
-<!-- =========================================== -->
+<hr>
 <h3><a name='api.JSException'>Class JSException</a></h3>
 <div style='margin-left:2em'>
-<p><strong><span style='color:#F00'>No documentation available</span></strong>
+<p>Contains a JavaScript execution.
+    
+    This exception will be raised in cases where a JavaScript runtime
+    occurs.  The <code>value</code> property will contain the value thrown from
+    JavaScript, typed as a <code><a href='#api.JSValueRef'>JSValueRef</a></code>.
+    
 <p>
 <hr>
 <h4>Constructor</h4>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSException.__init__'>JSException(value)</a></strong></code>
 <div style='margin-left:4em'>
-<strong><span style='color:#F00'>No documentation available</span></strong>
+Creates a new instance of this class.  <p>
+        Not intended to be called directly.
+
 </div>
 </div>
 </div>

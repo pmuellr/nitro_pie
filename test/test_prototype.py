@@ -72,7 +72,7 @@ class Test(unittest.TestCase):
         self.assertEquals(111, p2.getProperty(ctx, "a").toNumber(ctx))
         self.assertEquals(222, p2.getProperty(ctx, "b").toNumber(ctx))
 
-        o.setProperty(ctx, "a", JSValueRef.makeNumber(ctx,333))
+        o.setProperty(ctx, "a", ctx.makeNumber(333))
         self.assertEquals(333,  o.getProperty(ctx, "a").toNumber(ctx))
         self.assertEquals(111, p1.getProperty(ctx, "a").toNumber(ctx))
         

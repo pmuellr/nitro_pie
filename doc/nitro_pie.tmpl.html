@@ -201,6 +201,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
+<li>2009-05-04 - Patrick Mueller - version 0.6</li>
 <li>2009-04-22 - Patrick Mueller - version 0.5</li>
 </ul>
 
@@ -221,7 +222,8 @@ of the C API for
 which is the JavaScript engine shipped with 
 <a href="http://webkit.org/">WebKit</a>.
 You may want to get familiarity with this framework before using
-this package in anger.  In lieu of that, examine the test cases.
+this package in anger.  In lieu of that, examine the test cases
+and the "main" runner in the module itself.
 
 <p>Note that the <code>nitro_pie</code> module does not currently expose
 all of the WebKit APIs.  It does expose enough to do some interesting
@@ -233,7 +235,6 @@ things.
 <p>The <code>nitro_pie</code> module is implemented in a single file,
 <code>nitro_pie.py</code>.  You can just copy this file into
 an appropriate directory to use with other Python code.
-
 
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
@@ -253,49 +254,54 @@ some real life usage.
 <code>JSContext</code> object, via the following invocation:
 
 <pre>
-context = JSContext()
+context = JSGlobalContextRef.create()
 </pre>
 
 <p>Once a context has been obtained, you can execute a script using
-<code>JSContext</code>'s <code>eval()</code> method:
+<code>JSContextRef</code>'s <code>eval()</code> method:
 
 <pre>
-result = context.eval(script, None, script_file_name, 1)
+result = context.eval(script)
 </pre>
 
 <p>The <code>eval()</code> method will return the result of evaluating
-JavaScript code, perhaps returning a <code>JSObject</code> instance
+JavaScript code, returning a <code>JSValueRef</code> instance
 that you can further noodle on.
 
 <p>To add a new function to a context that a script executes in,
-use the <code>JSContext</code> <code>makeFunctionWithCallback()</code> method,
+use the <code>JSContextRef</code> <code>makeFunction()</code> method,
 and then add it to the 'global' object of the context:
 
 <pre>
 context = JSGlobalContextRef.create()
     
 globalObject = context.getGlobalObject()
-function = context.makeFunction(None, callbackPrint)
+function = context.makeFunction("print", callbackPrint)
 globalObject.setProperty(context, "print", function)
 </pre>
 
-<p>The second argument to the <code>makeFunctionWithCallback()</code> method
+<p>The third argument to the <code>makeFunction()</code> method
 is a Python callable, which should have the following signature:
 
 <pre>
 def callback_print(context, function, thisObject, args)
 </pre>
 
-<p>The <code>context</code> parameter is the context that the function
-was invoked within.
-The <code>function</code> parameter is the JavaScript function that is
-currently executing.
-The <code>thisObject</code> parameter is the <code>'this'</code> value
-for the invocation.
-The <code>args</code> parameter is the array of parameters passed
-to the function.  
+<p>The <code>context</code> parameter 
+(<code>JSContextRef</code>)
+is the context that the function was invoked within.
+The <code>function</code> parameter 
+(<code>JSObjectRef</code>)
+is the JavaScript function that is currently executing.
+The <code>thisObject</code> parameter 
+(<code>JSObjectRef</code>)
+is the <code>'this'</code> value for the invocation.
+The <code>args</code> parameter 
+(list of <code>JSValueRef</code>)
+is the array of parameters passed to the function.  
 
-<p>The function should return whatever value it needs to return.  Here's
+<p>The function should return whatever value it needs to return
+as a <code>JSValueRef</code>.  Here's
 an example of a function which prints it's arguments:
 
 <pre>
@@ -308,12 +314,12 @@ def callbackPrint(context, function, thisObject, args):
         
     print line
     
-    return JSValueRef.makeUndefined(context)
+    return context.makeUndefined()
 </pre>
 
 <p>There is currently no direct way of creating JavaScript objects or
 arrays other than the 'primitive' values specified in the table above.
-To do this indirectly, use <code>JSContext.eval()</code>.  For instance,
+To do this indirectly, use <code>JSContextRef.eval()</code>.  For instance,
 to create a new empty object, use:
 
 <pre>
@@ -327,6 +333,13 @@ object = context.eval("[]")
 </pre>
 
 <!-- ====================================================== -->
+<h2>Shell Usage</h2>
+
+<p><code>nitro_pie</code> can also be used as a command-line
+shell.  Invoke the module as a python program, using the
+<code>-h</code> option for more help.
+
+<!-- ====================================================== -->
 <h2>Module Reference</h2>
 
 <p>In general, the functions and methods in classes in this module
@@ -334,6 +347,12 @@ are veneers over the C APIs for JavaScriptCore as documented
 at the
 <a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
 available at the ADC.
+
+<p>Some functions/methods take one of 
+<code>str | unicode | JSStringRef</code>
+as a parameter.  In these cases, if you pass a <code>str</code>
+or <code>unicode</code> value in, a <code>JSStringRef</code>
+will be created and then destroyed during the call.
 
 <!-- ====================================================== -->
 %api_doc%

@@ -7,23 +7,33 @@ import inspect
 import StringIO
 import textwrap
 
-
 lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
 if lib_path not in sys.path: sys.path.insert(0, lib_path)
 
 import nitro_pie
 
+textile = False
+
 #--------------------------------------------------------------------
-_macro_patterns = (
+_macro_patterns_html = (
     (re.compile(r"\&\[(.*?)\]\[(.*?)\]"), r"<a href='\2'>\1</a>"),
     (re.compile(r"\*\[(.*?)\]"),          r"<strong>\1</strong>"),
     (re.compile(r"\$\[(.*?)\]"),          r"<code>\1</code>"),
     (re.compile(r"\#\[(.*?)\]"),          r"<code><a href='#api.\1'>\1</a></code>"),
 )
 
+_macro_patterns_textile = (
+    (re.compile(r"\&\[(.*?)\]\[(.*?)\]"), r"<a href='\2'>\1</a>"),
+    (re.compile(r"\*\[(.*?)\]"),          r"<strong>\1</strong>"),
+    (re.compile(r"\$\[(.*?)\]"),          r"<code>\1</code>"),
+    (re.compile(r"\#\[(.*?)\]"),          r"\1"),
+)
+
 def expandMacros(string):
 
-    for (pattern, repl) in _macro_patterns:
+    macro_patterns = _macro_patterns_textile if textile else _macro_patterns_html
+
+    for (pattern, repl) in macro_patterns:
         string = re.sub(pattern, repl, string)
 
     return string
@@ -41,7 +51,7 @@ class DocClass:
             self.docFull    = doc
         else:
             self.docOneLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
-            self.docFull    = self.docOneLine
+            self.docFull    = ""
             
         smethods = []
         cmethods = []
@@ -101,7 +111,7 @@ class DocFunction(object):
         doc = func.__doc__
         if not doc:
             self.docOneLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
-            self.docFull    = self.docOneLine
+            self.docFull    = ""
             return
             
         doc = expandMacros(doc)
@@ -202,7 +212,7 @@ class Doc:
     def parse(self):
         if not self.doc:
             self.firstLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
-            self.body      = self.firstLine
+            self.body      = ""
             return
     
         body_pattern = re.compile(r"(.*?)\n(.*)", re.DOTALL)
@@ -236,9 +246,7 @@ class Doc:
         pattern_throw  = re.compile(r"\w+\s*\((.*?)\)(.*)", re.DOTALL)
         
         for section in self.sections:
-            print "processing section: '%s'" % section
             sectionType = section.split()[0]
-            print "   sectionType: '%s'" % sectionType
             
             if sectionType in ["return", "returns"]:
                 match = pattern_return.match(section)
@@ -255,7 +263,7 @@ class Doc:
                 name = match.group(1)
                 type = match.group(2)
                 desc = match.group(3)
-                parm = "<strong><code>%s</code></strong> <tt>(%s)</tt> - %s" % (name, type, desc)
+                parm = "<strong><code>%s</code></strong> <tt>(%s)</tt><br>%s" % (name, type, desc)
                 parms.append(parm)
             
             elif sectionType in ["throw", "throws"]:
@@ -267,26 +275,24 @@ class Doc:
                 throw = "<strong><code>%s</code></strong> - %s" % (type, desc)
                 throws.append(throw)
             
-        print "Doc.parse():"
-        print "   returns: %s" % returns
-        print "   parms:   %s" % str(parms)
-        print "   throws:  %s" % str(throws)
-        
         if returns:
-            self.body += "\n<p><strong>Returns:</strong> " + returns
+            self.body += "\n<p><strong>Returns:</strong>"
+            self.body += "\n<ul>"
+            self.body += "\n<li><p>" + returns
+            self.body += "\n</ul>"
             
         if parms:
             self.body += "\n<p><strong>Parameters:</strong>"
             self.body += "\n<ul>"
             for parm in parms:
-                self.body += "\n<li>" + parm
+                self.body += "\n<li><p>" + parm
             self.body += "\n</ul>"
         
         if throws:
             self.body += "\n<p><strong>Raises:</strong>"
             self.body += "\n<ul>"
             for throw in throws:
-                self.body += "\n<li>" + throw
+                self.body += "\n<li><p>" + throw
             self.body += "\n</ul>"
         
 
@@ -314,9 +320,12 @@ def processMethods(apiFile, label, methods):
     for method in methods:
         name     = method.getSignature()
         id       = method.getLinkName()
-        doc      = method.getDocFull()
-        
-        print >>apiFile, "<p><code><strong><a name='%s'>%s</a></strong></code>" % (id, name)
+        doc      = "%s<p>%s" % (method.getDocOneLine(), method.getDocFull())
+
+        if textile:        
+            print >>apiFile, "<p>*@%s@*" % (name)
+        else:
+            print >>apiFile, "<p><code><strong><a name='%s'>%s</a></strong></code>" % (id, name)
         print >>apiFile, "<div style='margin-left:4em'>"
         print >>apiFile, doc
         print >>apiFile, "</div>"
@@ -330,7 +339,7 @@ def processDocClass(apiFile, docClass):
     link = docClass.getLinkName()
     doc  = docClass.getDocFull()
     
-    print >>apiFile, "<!-- =========================================== -->"
+    print >>apiFile, "<hr>"
     print >>apiFile, "<h3><a name='%s'>Class %s</a></h3>" % (link, name)
     print >>apiFile, "<div style='margin-left:2em'>"
     print >>apiFile, "<p>%s" % doc
@@ -344,6 +353,10 @@ def processDocClass(apiFile, docClass):
     print >>apiFile, ""
 
 #--------------------------------------------------------------------
+if len(sys.argv) > 1:
+    if sys.argv[1] == "textile":
+        textile = True
+
 iFilename = "nitro_pie.tmpl.html"
 oFilename = "nitro_pie.html"
 
@@ -378,18 +391,19 @@ if False:
 
 docClasses = [DocClass(getattr(nitro_pie, className)) for className in classNames]
 
-print >>apiFile, "<h3>Classes</h3>"
-print >>apiFile, "<p>"
-print >>apiFile, "<table cellpadding=3 cellspacing=0>"
-
-for docClass in docClasses:
-    name = docClass.getName()
-    doc  = docClass.getDocOneLine()
-    link = docClass.getLinkName()
+if not textile:
+    print >>apiFile, "<h3>Classes</h3>"
+    print >>apiFile, "<p>"
+    print >>apiFile, "<table cellpadding=3 cellspacing=0>"
     
-    print >>apiFile, "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (link, name, doc)
-
-print >>apiFile, "</table>"
+    for docClass in docClasses:
+        name = docClass.getName()
+        doc  = docClass.getDocOneLine()
+        link = docClass.getLinkName()
+        
+        print >>apiFile, "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (link, name, doc)
+    
+    print >>apiFile, "</table>"
 
 for docClass in docClasses:
     processDocClass(apiFile, docClass)    
@@ -397,6 +411,10 @@ for docClass in docClasses:
 apiOut = apiFile.getvalue()
 apiFile.close()
 
+if textile:
+    print apiOut
+    sys.exit()
+    
 iFile = open(iFilename)
 contents = iFile.read()
 iFile.close()
