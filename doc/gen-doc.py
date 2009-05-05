@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
 import os
+import re
 import sys
 import inspect
+import StringIO
+import textwrap
+
 
 lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
 if lib_path not in sys.path: sys.path.insert(0, lib_path)
@@ -10,136 +14,393 @@ if lib_path not in sys.path: sys.path.insert(0, lib_path)
 import nitro_pie
 
 #--------------------------------------------------------------------
-def docFirstLine(function):
-    if None == function.__doc__: return "no documentation available"
-    
-    return function.__doc__.split("\n")[0]
+_macro_patterns = (
+    (re.compile(r"\&\[(.*?)\]\[(.*?)\]"), r"<a href='\2'>\1</a>"),
+    (re.compile(r"\*\[(.*?)\]"),          r"<strong>\1</strong>"),
+    (re.compile(r"\$\[(.*?)\]"),          r"<code>\1</code>"),
+    (re.compile(r"\#\[(.*?)\]"),          r"<code><a href='#api.\1'>\1</a></code>"),
+)
+
+def expandMacros(string):
+
+    for (pattern, repl) in _macro_patterns:
+        string = re.sub(pattern, repl, string)
+
+    return string
 
 #--------------------------------------------------------------------
-def docFull(function):
-    if None == function.__doc__: return "no documentation available"
-    
-    return function.__doc__
+class DocClass:
 
-#--------------------------------------------------------------------
-def getStaticMethods(cls):
-    result = []
-    
-    for propName in dir(cls):
-        prop = getattr(cls, propName)
+    def __init__(self, cls):
+        self.cls = cls
         
-        if inspect.isfunction(prop): 
-            result.append(prop)
-    
-    return result
-
-#--------------------------------------------------------------------
-def getMethods(cls):
-    result = []
-    
-    for propName in dir(cls):
-        prop = getattr(cls, propName)
-        
-        if inspect.ismethod(prop): 
-            result.append(prop)
-    
-    return result
-
-#--------------------------------------------------------------------
-def argString(name, function):
-    args = inspect.getargspec(function)[0]
-    
-    if inspect.ismethod(function):
-        args = args[1:]
-        
-    result = "%s(" % name
-    for i, arg in enumerate(args):
-        if i == len(args) - 1:
-            formatString = "%s%s"
+        doc = cls.__doc__
+        if doc:
+            doc = expandMacros(doc)
+            self.docOneLine = doc.split("\n")[0]
+            self.docFull    = doc
         else:
-            formatString = "%s%s, "
-        result = formatString % (result, arg)
+            self.docOneLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
+            self.docFull    = self.docOneLine
+            
+        smethods = []
+        cmethods = []
+        imethods = []
+            
+        propNames = cls.__dict__.keys()
+        propNames.sort()
         
-    result = "%s)" % result
-    
-    return result
+        for propName in propNames:
+            prop = getattr(cls, propName)
+            
+            if inspect.isfunction(prop):
+                if prop.__name__[0] != "_":
+                    smethods.append(prop)
+                    
+            if inspect.ismethod(prop):
+                if prop.__name__[0] != "_":
+                    imethods.append(prop)
+                elif prop.__name__ == "__init__":
+                    cmethods.append(prop)
+                    
+        self.smethods = [DocMethodStatic(cls,method)      for method in smethods]
+        self.cmethods = [DocMethodConstructor(cls,method) for method in cmethods]
+        self.imethods = [DocMethodInstance(cls,method)    for method in imethods]
+
+    def getName(self):
+        return self.cls.__name__
+        
+    def getDocOneLine(self):
+        return self.docOneLine
+        
+    def getDocFull(self):
+        return self.docFull
+        
+    def getLinkName(self):
+        return "api.%s" % self.getName()
+
+    def getStaticMethods(self):
+        return self.smethods
+        
+    def getConstructors(self):
+        return self.cmethods
+        
+    def getMethods(self):
+        return self.imethods
+        
 
 #--------------------------------------------------------------------
-def processPointerType(typeName):
+class DocFunction(object):
 
-    id = "api.%s" % typeName
-    
-    skipNames = ["from_param", "value", "functions"]
-
-    type = getattr(nitro_pie, typeName)
-    propNames = dir(type)
-    propNames = [propName for propName in propNames if propName[0] != "_"]
-    propNames = [propName for propName in propNames if propName not in skipNames]
-
-    print "<!-- =========================================== -->"
-    print "<h2><a name='%s'>%s</a></h2>" % (id, typeName)
-    print "<div style='margin-left:2em'>"
-    
-#    print "<table cellpadding=3 cellspacing=0 frame=border border=1>"
-    print "<table cellpadding=3 cellspacing=0"
-    
-    smethods = getStaticMethods(type)
-    methods  = getMethods(type)
-    
-    if len(smethods) > 0:
-        print "<tr><td colspan=2><em><strong style='font-size:120%'>Static Methods</strong></em></td></tr>"
+    def __init__(self, cls, func):
+        self.cls  = cls
+        self.func = func
         
-        for method in smethods:
-            name     = method.__name__
-            id       = "api.%s.%s" % (typeName, name)
-            doc      = docFirstLine(method)
+        self.name = func.__name__
+        
+        doc = func.__doc__
+        if not doc:
+            self.docOneLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
+            self.docFull    = self.docOneLine
+            return
             
-            print "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (id, name, doc)
+        doc = expandMacros(doc)
+        self.docOneLine = doc.split("\n")[0]
+        self.docFull    = doc
+        
+        doc = Doc(doc)
+        self.docOneLine = doc.firstLine
+        self.docFull    = doc.body
+
+    def getName(self):
+        return self.name
+        
+    def getPrintName(self):
+        return self.getName()
+        
+    def getLinkName(self):
+        return "api.%s.%s" % (self.cls.__name__, self.getName())
+
+    def getDocOneLine(self):
+        return self.docOneLine
+        
+    def getDocFull(self):
+        return self.docFull
+        
+    def getArgNames(self):
+        return inspect.getargspec(self.func)[0]
+
+    def getSignature(self):
+        args = self.getArgNames()
+        dfts = inspect.getargspec(self.func)[3]
+        
+        if not dfts: dfts = []
             
-    if len(methods) > 0:
-        print "<tr><td colspan=2><em><strong style='font-size:120%'>Methods</strong></em></td></tr>"
+        dfts = [str(dft) for dft in dfts]
+        
+        while len(dfts) < len(args):
+            dfts.insert(0,"")
+            
+        result = "%s(" % self.getPrintName() 
+        
+        for i, arg in enumerate(args):
+            dft = dfts[i]
+            
+            if dft:
+                arg = "%s = %s" % (arg, dft)
+            
+            if i == len(args) - 1:
+                formatString = "%s%s"
+            else:
+                formatString = "%s%s, "
+            result = formatString % (result, arg)
+            
+        result = "%s)" % result
+        
+        return result
+
+#--------------------------------------------------------------------
+class DocMethodStatic(DocFunction):
+
+    def __init(self, cls, func):
+        DocFunction.__init__(self,cls,func)
+        
+#--------------------------------------------------------------------
+class DocMethodInstance(DocFunction):
+
+    def __init(self, cls, func):
+        DocFunction.__init__(self,cls,func)
+
+    def getArgNames(self):
+        return super(DocMethodInstance, self).getArgNames()[1:]
+        
+#--------------------------------------------------------------------
+class DocMethodConstructor(DocMethodInstance):
+
+    def __init(self, cls, func):
+        DocMethodInstance.__init__(self, cls, func)
+        
+        self.name = cls.__name__
+
+    def getLinkName(self):
+        return "api.%s.__init__" % (self.cls.__name__)
+
+    def getPrintName(self):
+        return self.cls.__name__
+
+#--------------------------------------------------------------------
+class Doc:
+
+    def __init__(self, doc):
+    
+        self.doc       = textwrap.dedent(doc)
+        self.firstLine = None
+        self.body      = None
+        
+        self.parse()
+
+    def parse(self):
+        if not self.doc:
+            self.firstLine = "<strong><span style='color:#F00'>No documentation available</span></strong>"
+            self.body      = self.firstLine
+            return
+    
+        body_pattern = re.compile(r"(.*?)\n(.*)", re.DOTALL)
+        match = body_pattern.match(self.doc)
+        
+        if not match:
+            self.firstLine = self.doc
+            return
+            
+        self.firstLine = match.group(1)
+        
+        rest = match.group(2)
+        
+        section_pattern = re.compile(r"\n\s*?@")
+        
+        sections = section_pattern.split(rest)
+        
+        if not sections:
+            self.body = "<p>%s" % self.firstLine
+            
+        self.body = sections[0]
+        
+        self.sections = sections[1:]
+        
+        returns = None
+        parms   = []
+        throws  = []
+
+        pattern_return = re.compile(r"\w+\s*\((.*?)\)(.*)", re.DOTALL)
+        pattern_parm   = re.compile(r"\w+\s*(\w+)\s*\((.*?)\)(.*)", re.DOTALL)
+        pattern_throw  = re.compile(r"\w+\s*\((.*?)\)(.*)", re.DOTALL)
+        
+        for section in self.sections:
+            print "processing section: '%s'" % section
+            sectionType = section.split()[0]
+            print "   sectionType: '%s'" % sectionType
+            
+            if sectionType in ["return", "returns"]:
+                match = pattern_return.match(section)
+                if not match: continue
+                
+                type = match.group(1)
+                desc = match.group(2)
+                returns = "<strong><code>%s</code></strong> - %s" % (type, desc)
+            
+            elif sectionType in ["parm", "param", "arg"]:
+                match = pattern_parm.match(section)
+                if not match: continue
+                
+                name = match.group(1)
+                type = match.group(2)
+                desc = match.group(3)
+                parm = "<strong><code>%s</code></strong> <tt>(%s)</tt> - %s" % (name, type, desc)
+                parms.append(parm)
+            
+            elif sectionType in ["throw", "throws"]:
+                match = pattern_throw.match(section)
+                if not match: continue
+                
+                type = match.group(1)
+                desc = match.group(2)
+                throw = "<strong><code>%s</code></strong> - %s" % (type, desc)
+                throws.append(throw)
+            
+        print "Doc.parse():"
+        print "   returns: %s" % returns
+        print "   parms:   %s" % str(parms)
+        print "   throws:  %s" % str(throws)
+        
+        if returns:
+            self.body += "\n<p><strong>Returns:</strong> " + returns
+            
+        if parms:
+            self.body += "\n<p><strong>Parameters:</strong>"
+            self.body += "\n<ul>"
+            for parm in parms:
+                self.body += "\n<li>" + parm
+            self.body += "\n</ul>"
+        
+        if throws:
+            self.body += "\n<p><strong>Raises:</strong>"
+            self.body += "\n<ul>"
+            for throw in throws:
+                self.body += "\n<li>" + throw
+            self.body += "\n</ul>"
+        
+
+#--------------------------------------------------------------------
+def processMethods(apiFile, label, methods):
+
+    if not len(methods): return
+
+    print >>apiFile, "<hr>"
+    print >>apiFile, "<h4>%s</h4>" % label
+    print >>apiFile, "<div style='margin-left:4em'>"
+    
+    if False:
+        print >>apiFile, "<table cellpadding=3 cellspacing=0>"
         
         for method in methods:
-            name     = method.__name__
-            id       = "api.%s.%s" % (typeName, name)
-            doc      = docFirstLine(method)
+            name     = method.getPrintName()
+            id       = method.getLinkName()
+            doc      = method.getDocOneLine()
             
-            print "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (id, name, doc)
-        
-    print "</table>"
-        
-    for propName in propNames:
-        prop = getattr(type, propName)
-        if not callable(prop): continue
-
-        doc      = docFull(prop)
-        id       = "api.%s.%s" % (typeName, propName)
-        propArgs = argString(propName, prop)
-        print "<h3><code><a name='%s'>%s</a></code></h3>" % (id, propArgs)
-        
-        print "<div style='margin-left:2em'>"
-        print doc
-        print "</div>"
+            print >>apiFile, "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (id, name, doc)
     
-    print "</div>"
-     
+        print >>apiFile, "</table>"
+    
+    for method in methods:
+        name     = method.getSignature()
+        id       = method.getLinkName()
+        doc      = method.getDocFull()
         
+        print >>apiFile, "<p><code><strong><a name='%s'>%s</a></strong></code>" % (id, name)
+        print >>apiFile, "<div style='margin-left:4em'>"
+        print >>apiFile, doc
+        print >>apiFile, "</div>"
+
+    print >>apiFile, "</div>"
+
 #--------------------------------------------------------------------
-pointerTypes = """
+def processDocClass(apiFile, docClass):
+
+    name = docClass.getName()
+    link = docClass.getLinkName()
+    doc  = docClass.getDocFull()
+    
+    print >>apiFile, "<!-- =========================================== -->"
+    print >>apiFile, "<h3><a name='%s'>Class %s</a></h3>" % (link, name)
+    print >>apiFile, "<div style='margin-left:2em'>"
+    print >>apiFile, "<p>%s" % doc
+    print >>apiFile, "<p>"
+
+    processMethods(apiFile, "Static Methods", docClass.getStaticMethods())
+    processMethods(apiFile, "Constructor",    docClass.getConstructors())
+    processMethods(apiFile, "Methods",        docClass.getMethods())
+    
+    print >>apiFile, "</div>"
+    print >>apiFile, ""
+
+#--------------------------------------------------------------------
+iFilename = "nitro_pie.tmpl.html"
+oFilename = "nitro_pie.html"
+
+classNames = """
+JSLibrary
+JSContextRef
 JSGlobalContextRef
 JSStringRef
 JSValueRef
 JSObjectRef
+JSException
 """.split()
 
-print "<p>Classes"
-print "<ul>"
-for pointerType in pointerTypes:
-    id = "api.%s" % pointerType
-    print "<li><a href='#%s'>%s" % (id, pointerType)
-print "</ul>"
+apiFile = StringIO.StringIO()
 
-for pointerType in pointerTypes:
-    processPointerType(pointerType)
+if False:
+    print >>apiFile, "<p>"
+    print >>apiFile, "<table cellpadding=3 cellspacing=0>"
+    
+    for className in classNames:
+        cls  = getattr(nitro_pie, className)
+        id   = "api.%s" % className
+        name = cls.__name__
+        doc  = docFirstLine(cls)
+        
+        print >>apiFile, "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (id, name, doc)
+    
+    print >>apiFile, "</table>"
+    
+    for className in classNames:
+        processPointerType(apiFile, className)
 
+docClasses = [DocClass(getattr(nitro_pie, className)) for className in classNames]
 
+print >>apiFile, "<h3>Classes</h3>"
+print >>apiFile, "<p>"
+print >>apiFile, "<table cellpadding=3 cellspacing=0>"
+
+for docClass in docClasses:
+    name = docClass.getName()
+    doc  = docClass.getDocOneLine()
+    link = docClass.getLinkName()
+    
+    print >>apiFile, "<tr><td><code style='margin-left:2em'><strong><a href='#%s'>%s</a></strong></code></td><td width=100%%>%s</td></tr>" % (link, name, doc)
+
+print >>apiFile, "</table>"
+
+for docClass in docClasses:
+    processDocClass(apiFile, docClass)    
+
+apiOut = apiFile.getvalue()
+apiFile.close()
+
+iFile = open(iFilename)
+contents = iFile.read()
+iFile.close()
+
+oFile = open(oFilename, "w")
+oFile.write(contents.replace("%api_doc%", apiOut))
+oFile.close()

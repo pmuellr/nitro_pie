@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
         ctx = self.ctx
 
         a     = ctx.eval("[]")
-        array = ctx.eval("Array").asJSObjectRef()
+        array = ctx.eval("Array").asJSObjectRef(ctx)
         
         self.assertTrue(a.isInstanceOf(ctx,array))
         
@@ -81,8 +81,8 @@ class Test(unittest.TestCase):
     def test_isFunction(self):
         ctx = self.ctx
 
-        a = ctx.eval("[]").asJSObjectRef()
-        f = ctx.eval("(function() {})").asJSObjectRef()
+        a = ctx.eval("[]").asJSObjectRef(ctx)
+        f = ctx.eval("(function() {})").asJSObjectRef(ctx)
         
         self.assertFalse(a.isFunction(ctx))
         self.assertTrue(f.isFunction(ctx))
@@ -91,9 +91,9 @@ class Test(unittest.TestCase):
     def test_isConstructor(self):
         ctx = self.ctx
 
-        a     = ctx.eval("[]").asJSObjectRef()
-        f     = ctx.eval("(function() {})").asJSObjectRef()
-        array = ctx.eval("Array").asJSObjectRef()
+        a     = ctx.eval("[]").asJSObjectRef(ctx)
+        f     = ctx.eval("(function() {})").asJSObjectRef(ctx)
+        array = ctx.eval("Array").asJSObjectRef(ctx)
         
         self.assertFalse(a.isConstructor(ctx))
         self.assertTrue(f.isConstructor(ctx))

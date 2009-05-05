@@ -50,7 +50,7 @@ class Test(unittest.TestCase):
     def test_get_simple_properties(self):
         ctx = self.ctx
         
-        result = ctx.eval("({a: 1, b: '2', c: true, d: null, e: undefined})").asJSObjectRef()
+        result = ctx.eval("({a: 1, b: '2', c: true, d: null, e: undefined})").asJSObjectRef(ctx)
         
         self.assertTrue(result.isObject(ctx))
         
@@ -71,14 +71,14 @@ class Test(unittest.TestCase):
     def test_complex_property(self):
         ctx = self.ctx
 
-        result = ctx.eval("({a: {b: 2}})").asJSObjectRef()
+        result = ctx.eval("({a: {b: 2}})").asJSObjectRef(ctx)
         
         self.assertTrue(result.isObject(ctx))
         
         prop_names = result.getPropertyNames(ctx)
         self.assertTrue("a" in prop_names)
         
-        result_inner = result.getProperty(ctx, "a").asJSObjectRef()
+        result_inner = result.getProperty(ctx, "a").asJSObjectRef(ctx)
         self.assertTrue(result_inner.isObject(ctx))
         
         prop_names = result_inner.getPropertyNames(ctx)
@@ -90,7 +90,7 @@ class Test(unittest.TestCase):
     def test_delete_property(self):
         ctx = self.ctx
 
-        o = ctx.eval("({a: 1, b: 2, c: 3})").asJSObjectRef()
+        o = ctx.eval("({a: 1, b: 2, c: 3})").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
         
         for prop in "a b c".split():
@@ -110,7 +110,7 @@ class Test(unittest.TestCase):
     def test_set_property(self):
         ctx = self.ctx
 
-        o = ctx.eval("({})").asJSObjectRef()
+        o = ctx.eval("({})").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
 
         o.setProperty(ctx, "a", JSValueRef.makeNumber(ctx,1))        
@@ -136,15 +136,15 @@ class Test(unittest.TestCase):
         p1 = ctx.eval("[1,2]")
         p2 = ctx.eval("({a:11, b:22})")
 
-        o = ctx.eval("({})").asJSObjectRef()
+        o = ctx.eval("({})").asJSObjectRef(ctx)
         o.setProperty(ctx, "x", p1)
         o.setProperty(ctx, "y", p2)
 
         for prop in "x y".split():
             self.assertTrue(o.hasProperty(ctx, prop))
         
-        t1 = o.getProperty(ctx, "x").asJSObjectRef()
-        t2 = o.getProperty(ctx, "y").asJSObjectRef()
+        t1 = o.getProperty(ctx, "x").asJSObjectRef(ctx)
+        t2 = o.getProperty(ctx, "y").asJSObjectRef(ctx)
         
         self.assertEquals(2, t1.getProperty(ctx, "length").toNumber(ctx))
         self.assertEquals(1, t1.getPropertyAtIndex(ctx, 0).toNumber(ctx))
@@ -157,7 +157,7 @@ class Test(unittest.TestCase):
     def test_get_array_element(self):
         ctx = self.ctx
 
-        o = ctx.eval("[11,22,33]").asJSObjectRef()
+        o = ctx.eval("[11,22,33]").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
 
         self.assertEquals(11, o.getPropertyAtIndex(ctx, 0).toNumber(ctx))
@@ -168,7 +168,7 @@ class Test(unittest.TestCase):
     def test_set_array_element(self):
         ctx = self.ctx
 
-        o = ctx.eval("[]").asJSObjectRef()
+        o = ctx.eval("[]").asJSObjectRef(ctx)
         self.assertTrue(o.isObject(ctx))
 
         o.setPropertyAtIndex(ctx, 0, JSValueRef.makeNumber(ctx,1))        
@@ -189,9 +189,9 @@ class Test(unittest.TestCase):
     def test_attribute_read_only(self):
         ctx = self.ctx
 
-        o = ctx.eval("({})").asJSObjectRef()
+        o = ctx.eval("({})").asJSObjectRef(ctx)
         
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), kJSPropertyAttributeReadOnly)
+        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeReadOnly)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
         o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))
@@ -207,9 +207,9 @@ class Test(unittest.TestCase):
     def test_attribute_dont_enum(self):
         ctx = self.ctx
 
-        o = ctx.eval("({})").asJSObjectRef()
+        o = ctx.eval("({})").asJSObjectRef(ctx)
 
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), kJSPropertyAttributeDontEnum)
+        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeDontEnum)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
         o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))
@@ -224,8 +224,8 @@ class Test(unittest.TestCase):
     def test_attribute_dont_delete(self):
         ctx = self.ctx
 
-        o = ctx.eval("({})").asJSObjectRef()
-        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), kJSPropertyAttributeDontDelete)
+        o = ctx.eval("({})").asJSObjectRef(ctx)
+        o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 111), JSObjectRef.kJSPropertyAttributeDontDelete)
         self.assertEquals(111, o.getProperty(ctx, "x").toNumber(ctx))
         
         o.setProperty(ctx, "x", JSValueRef.makeNumber(ctx, 222))

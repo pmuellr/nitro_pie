@@ -64,7 +64,7 @@ class Test(unittest.TestCase):
         try:
             result = ctx.checkScriptSyntax(script, "<testing>")
         except JSException, e:
-            e = e.value.asJSObjectRef()
+            e = e.value.asJSObjectRef(ctx)
             props = e.getPropertyNames(ctx)
             
             name    = e.getProperty(ctx,"name")    if e.hasProperty(ctx,"name")    else None

@@ -50,7 +50,7 @@ def sum_callback(ctx, function, thisObject, args):
 
 #-------------------------------------------------------------------
 def array_callback(ctx, function, thisObject, args):
-    arr = ctx.eval("[]").asJSObjectRef()
+    arr = ctx.eval("[]").asJSObjectRef(ctx)
     
     for i, v in enumerate(args):
         arr.setPropertyAtIndex(ctx, i, v)
@@ -105,7 +105,7 @@ class Test(unittest.TestCase):
         globalObject.setProperty(ctx, "arr", function)
         
         try:
-            result = ctx.eval("arr(66,44,22)").asJSObjectRef()
+            result = ctx.eval("arr(66,44,22)").asJSObjectRef(ctx)
         except JSException, e:
             log(get_js_props(e.value))
             self.fail()

@@ -1,0 +1,343 @@
+<html>
+
+<!-- ====================================================== -->
+<head>
+<title id="head_title">nitro_pie - Python interface for JavaScriptCore</title>
+<style type="text/css">
+
+/*-----------------------------------------------------------------*/
+body {
+    font-family:        sans-serif;
+    color:              #333;
+    background:         #EEE;
+    margin-left:        10em;
+    margin-right:        3em;
+}
+
+/*-----------------------------------------------------------------*/
+/*
+a:link, a:visited { 
+    color:              blue;
+}
+*/
+
+/*-----------------------------------------------------------------*/
+code, .code {
+    font-weight:        bold;
+    font-family:        monospace;
+    color:              #055;
+
+}
+
+/*-----------------------------------------------------------------*/
+pre, xmp {
+    border-width:       1;
+    border-style:       solid;
+    overflow:           auto;
+    padding-top:        0.4em;
+    padding-bottom:     0.4em;
+    padding-left:       1.4em;
+    padding-right:      1.4em;
+    margin-left:        1.4em;
+    margin-right:       1.4em;
+    background:         #FFFFDF;
+}
+
+
+/*-----------------------------------------------------------------*/
+h1,h2,h3 {
+    padding-left:          2em;
+    padding-right:         0.3em;
+    padding-top:           0.3em;
+    padding-bottom:        0.3em;
+    border-style:          solid;
+    border-width:          1;
+    border-color:          #000;
+    background:            #227;
+    color:                 #FFF;
+    text-shadow:           2px 2px 2px #777;
+    -moz-border-radius:    10px;
+    -webkit-border-radius: 10px;    
+    
+}
+
+/*-----------------------------------------------------------------*/
+h1 {
+    margin-left:         -3em;
+    font-size:          250%;
+}
+
+/*-----------------------------------------------------------------*/
+h2 {
+    margin-left:         -2em;
+}
+
+/*-----------------------------------------------------------------*/
+h3 {
+    background:          #77A;
+    margin-left:         -1em;
+    padding-left:         1em;
+}
+
+.code-head, .code-parms, .code-returns, .code-throws {
+    font-weight:         bold;
+    margin-left:         -1em;
+    padding-left:         1em;
+}
+
+.code-block {
+    margin-left:          3em;
+}
+
+.code-head {
+    font-family:         monospace;
+    background:          #CCF;
+    padding-top:          5px;
+    padding-bottom:       5px;
+}
+
+.code-parms, .code-returns, .code-throws {
+    padding-top:          0;
+    padding-bottom:       0;
+}
+
+/*-----------------------------------------------------------------*/
+.url {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+/*-----------------------------------------------------------------*/
+.page-break {
+}
+/*
+page-break-before: always;
+*/
+
+/*-----------------------------------------------------------------*/
+.warning {
+    font-weight:      bold;
+    font-size:        150%;
+    background-color: #FAA;
+}
+
+/*-----------------------------------------------------------------*/
+.header-link {
+    font-weight:      normal;
+    font-size:        80%;
+    text-shadow:      none;
+}
+
+/*-----------------------------------------------------------------*/
+@media print {
+    body {
+        background:         #FFF;
+    }
+    
+    pre, xmp {
+        overflow:           hidden;
+        background:         #FFFFEF;
+    }
+    /*
+    */
+}
+
+</style>
+
+<!-- ======================================================================= -->
+<script type="text/javascript">
+function body_onload() {
+    // make head title same as document title
+    var head_title = document.getElementById("head_title").innerHTML
+    document.getElementById("body_title").innerHTML = head_title
+
+    // make spans of class url into links
+    var spans = document.getElementsByTagName("span")
+    for (var i=0; i<spans.length; i++) {
+        var span = spans[i]
+        if (span.className != "url") 
+            continue
+        var url  = span.innerHTML
+        span.innerHTML = "<a href='" + url + "'>" + url + "</a>"
+    }
+    
+    // build TOC
+    toc_ul = document.getElementById("toc_ul")
+    if (null == toc_ul) return
+    
+    var h2s = document.getElementsByTagName("h2")
+    var toc_entries = []
+    for (var i=1; i<h2s.length; i++) {
+        var h2 = h2s[i]
+        var h2_text = h2.innerHTML
+        
+        var entry = "<li><a href='#toc." + i + "'>" + h2_text + "</a></li>"
+        toc_entries.push(entry)
+        
+        var anchor = document.createElement("a")
+        anchor.id = "toc." + i
+        h2.parentNode.insertBefore(anchor,h2)
+    }
+    
+    toc_entries = toc_entries.join("\n")
+    toc_ul.innerHTML = toc_entries
+}
+</script>
+</head>
+
+<!-- ====================================================== -->
+<body onload="body_onload()">
+    
+<h1 id="body_title">title should have been filled in via JavaScript</h1>
+
+<!-- ====================================================== -->
+
+<!--
+<h3>Permalink</h3>
+<ul>
+<li><span class="url">http://rtpgsa.ibm.com/~pmuellr/papers/private/EGL/egl-java-analysis.html</span></li>
+</ul>
+-->
+
+<h3>History</h3>
+<ul>
+<li>2009-04-22 - Patrick Mueller - version 0.5</li>
+</ul>
+
+<!-- ====================================================== -->
+<h2>Table of Contents</h2>
+<ul id="toc_ul">
+</ul>
+<!--
+--/>
+
+<!-- ====================================================== -->
+<h2>Introduction</h2>
+
+<p>The <code>nitro_pie</code> package implements a Python module
+named <code>nitro_pie</code> which is a Python version
+of the C API for
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>,
+which is the JavaScript engine shipped with 
+<a href="http://webkit.org/">WebKit</a>.
+You may want to get familiarity with this framework before using
+this package in anger.  In lieu of that, examine the test cases.
+
+<p>Note that the <code>nitro_pie</code> module does not currently expose
+all of the WebKit APIs.  It does expose enough to do some interesting
+things.
+
+<!-- ====================================================== -->
+<h2>Installation</h2>
+
+<p>The <code>nitro_pie</code> module is implemented in a single file,
+<code>nitro_pie.py</code>.  You can just copy this file into
+an appropriate directory to use with other Python code.
+
+
+<p>The module makes extensive use of the 
+<code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
+module, which is included in Python distributions starting with version 2.5.
+The <code>nitro_pie</code> module has currently only be tested and used on Mac OS X, and will likely
+need some changes to run on other operating systems.  Along with finding/building
+a copy of JavaScriptCore for those operating systems.
+
+<!-- ====================================================== -->
+<h2>Usage</h2>
+
+<p>There are test cases available in the <code>test</code> subdirectory,
+and a shell example available in the <code>nps</code> directory, to see
+some real life usage.
+
+<p>All usages of <code>nitro_pie</code> start with obtaining a
+<code>JSContext</code> object, via the following invocation:
+
+<pre>
+context = JSContext()
+</pre>
+
+<p>Once a context has been obtained, you can execute a script using
+<code>JSContext</code>'s <code>eval()</code> method:
+
+<pre>
+result = context.eval(script, None, script_file_name, 1)
+</pre>
+
+<p>The <code>eval()</code> method will return the result of evaluating
+JavaScript code, perhaps returning a <code>JSObject</code> instance
+that you can further noodle on.
+
+<p>To add a new function to a context that a script executes in,
+use the <code>JSContext</code> <code>makeFunctionWithCallback()</code> method,
+and then add it to the 'global' object of the context:
+
+<pre>
+context = JSGlobalContextRef.create()
+    
+globalObject = context.getGlobalObject()
+function = context.makeFunction(None, callbackPrint)
+globalObject.setProperty(context, "print", function)
+</pre>
+
+<p>The second argument to the <code>makeFunctionWithCallback()</code> method
+is a Python callable, which should have the following signature:
+
+<pre>
+def callback_print(context, function, thisObject, args)
+</pre>
+
+<p>The <code>context</code> parameter is the context that the function
+was invoked within.
+The <code>function</code> parameter is the JavaScript function that is
+currently executing.
+The <code>thisObject</code> parameter is the <code>'this'</code> value
+for the invocation.
+The <code>args</code> parameter is the array of parameters passed
+to the function.  
+
+<p>The function should return whatever value it needs to return.  Here's
+an example of a function which prints it's arguments:
+
+<pre>
+def callbackPrint(context, function, thisObject, args):
+    line = ""
+    
+    for valueRef in args:
+        string = valueRef.toString(context)
+        line   = line + string
+        
+    print line
+    
+    return JSValueRef.makeUndefined(context)
+</pre>
+
+<p>There is currently no direct way of creating JavaScript objects or
+arrays other than the 'primitive' values specified in the table above.
+To do this indirectly, use <code>JSContext.eval()</code>.  For instance,
+to create a new empty object, use:
+
+<pre>
+object = context.eval("({})")
+</pre>
+
+<p>To create an array, use:
+
+<pre>
+object = context.eval("[]")
+</pre>
+
+<!-- ====================================================== -->
+<h2>Module Reference</h2>
+
+<p>In general, the functions and methods in classes in this module
+are veneers over the C APIs for JavaScriptCore as documented
+at the
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore Framework Reference</a>
+available at the ADC.
+
+<!-- ====================================================== -->
+%api_doc%
+
+</body>
+
+</html>

@@ -41,28 +41,15 @@ NitroLogging
 JSException
 JSGlobalContextRef
 JSLibrary
-JSObjectCallAsConstructorCallback
-JSObjectCallAsFunctionCallback
 JSObjectRef
 JSStringRef
 JSValueRef
-
-kJSPropertyAttributeDontDelete
-kJSPropertyAttributeDontEnum
-kJSPropertyAttributeNone
-kJSPropertyAttributeReadOnly
-kJSTypeBoolean
-kJSTypeNull
-kJSTypeNumber
-kJSTypeObject
-kJSTypeString
-kJSTypeUndefined
 """.split()
 
+import os
 import ctypes
 import ctypes.util
 import inspect
-import os
 
 #-------------------------------------------------------------------
 # logger
@@ -89,40 +76,66 @@ def _log(message="", args=None):
     
     print "%s[%4d]: %s" % (filename, lineNumber, message)
 
-#-------------------------------------------------------------------
-kJSTypeUndefined = 0
-kJSTypeNull      = 1
-kJSTypeBoolean   = 2
-kJSTypeNumber    = 3
-kJSTypeString    = 4
-kJSTypeObject    = 5 
-
-#-------------------------------------------------------------------
-kJSPropertyAttributeNone       = 0
-kJSPropertyAttributeReadOnly   = 1 << 1
-kJSPropertyAttributeDontEnum   = 1 << 2 
-kJSPropertyAttributeDontDelete = 1 << 3 
+if False:
+    #-------------------------------------------------------------------
+    kJSTypeUndefined = 0
+    kJSTypeNull      = 1
+    kJSTypeBoolean   = 2
+    kJSTypeNumber    = 3
+    kJSTypeString    = 4
+    kJSTypeObject    = 5 
+    
+    #-------------------------------------------------------------------
+    kJSPropertyAttributeNone       = 0
+    kJSPropertyAttributeReadOnly   = 1 << 1
+    kJSPropertyAttributeDontEnum   = 1 << 2 
+    kJSPropertyAttributeDontDelete = 1 << 3 
 
 #--------------------------------------------------------------------
 class JSContextRef(ctypes.c_void_p):
-
+    """Models the JSContextRef type.
+    
+    <p>These methods call functions defined in 
+    &[JSContextRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html].
+    """
     functions = []
     
     #----------------------------------------------------------------
     def getGlobalObject(self):
+        """Returns the global object associated with a context.
+        
+        @returns #[JSValueRef]
+        """
         _log("JSContextRef.$f(%s)", (self,))
         result = _JSContextGetGlobalObject(self)
         return result
     
     #----------------------------------------------------------------
     def garbageCollect(self):
+        """Runs the garbage collector.
+        
+        The garbage collector does *[need] to be run explicitly,
+        but can.
+        """
         _log("JSContextRef.$f(%s)", (self,))
         return _JSGarbageCollect(self)
     
     #----------------------------------------------------------------
     def eval(self, script, thisObject=None, sourceURL=None, startingLineNumber=1):
+        """Evaluate a string of JavaScript code.
+        
+        @returns (#[JSValueRef]) The value of executing the script.
+        
+        @param script             (str | unicode | #[JSStringRef])
+        @param thisObject         (#[JSObjectRef])
+        @param sourceURL          (str | unicode | #[JSStringRef])
+        @param startingLineNumber (int)
+        
+        @throws (#[JSException])  When a JavaScript exception occurs
+            during the processing of the script
+        """
         _log("JSContextRef.$f(%s, '%s', %s, '%s', %s)", (self, script, thisObject, sourceURL, startingLineNumber))
-        if thisObject:         assert isinstance(context,            JSValueRef),   "Expecting a JSValueRef for the thisObject parameter"
+        if thisObject:         assert isinstance(context,            JSObjectRef),   "Expecting a JSValueRef for the thisObject parameter"
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
 
         scriptRef    = JSStringRef.asRef(script)
@@ -218,6 +231,11 @@ class JSContextRef(ctypes.c_void_p):
     
 #--------------------------------------------------------------------
 class JSGlobalContextRef(JSContextRef):
+    """Models the JSGlobalContextRef type.
+    
+    <p>These methods call functions defined in 
+    &[JSContextRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSContextRef/index.html].
+    """
 
     #----------------------------------------------------------------
     @staticmethod
@@ -238,6 +256,11 @@ class JSGlobalContextRef(JSContextRef):
 
 #--------------------------------------------------------------------
 class JSStringRef(ctypes.c_void_p):
+    """Models the JSStringRef type.
+    
+    <p>These methods call functions defined in 
+    &[JSStringRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSStringRef/index.html].
+    """
 
     #----------------------------------------------------------------
     @staticmethod
@@ -298,6 +321,18 @@ class JSStringRef(ctypes.c_void_p):
 
 #--------------------------------------------------------------------
 class JSValueRef(ctypes.c_void_p):
+    """Models the JSValueRef type.
+    
+    <p>These methods call functions defined in 
+    &[JSValueRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSValueRef/index.html].
+    """
+
+    kJSTypeUndefined = 0
+    kJSTypeNull      = 1
+    kJSTypeBoolean   = 2
+    kJSTypeNumber    = 3
+    kJSTypeString    = 4
+    kJSTypeObject    = 5 
 
     #----------------------------------------------------------------
     @staticmethod
@@ -341,10 +376,16 @@ class JSValueRef(ctypes.c_void_p):
         return _JSValueMakeUndefined(context)
 
     #----------------------------------------------------------------
-    def asJSObjectRef(self):
+    def asJSObjectRef(self, context):
         _log("JSValueRef.$f(%s)", (self,))
+        assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
         if isinstance(self, JSObjectRef): return self
+        
+        type = self.getType(context)
+        
+        if type != JSValueRef.kJSTypeObject:
+            raise TypeError, "Unable to convert a non-object into a JSObjectRef (type was: %s)" % str(type)
 
         return ctypes.cast(self, JSObjectRef)
     
@@ -360,21 +401,21 @@ class JSValueRef(ctypes.c_void_p):
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
-        return _JSValueIsBoolean(context, self)
+        return _JSValueIsBoolean(context, self).value
     
     #----------------------------------------------------------------
-    def isEqual(self, context, other=None):
+    def isEqual(self, context, other):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
-        assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
-        if other: assert isinstance(other, JSValueRef), "Expecting a JSValueRef for the other parameter"
+        assert isinstance(context, JSContextRef),  "Expecting a JSContextRef for the context parameter"
+        assert isinstance(other, JSValueRef),      "Expecting a JSValueRef for the other parameter"
 
         return _JSValueIsEqual(context, self, other, None)
     
     #----------------------------------------------------------------
     def isInstanceOf(self, context, constructor):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, constructor))
-        assert isinstance(context, JSContextRef),   "Expecting a JSContextRef for the context parameter"
-        assert isinstance(constructor, JSValueRef), "Expecting a JSValueRef for the constructor parameter"
+        assert isinstance(context,     JSContextRef), "Expecting a JSContextRef for the context parameter"
+        assert isinstance(constructor, JSValueRef),   "Expecting a JSValueRef for the constructor parameter"
         
         return _JSValueIsInstanceOfConstructor(context, self, constructor, None)
     
@@ -403,7 +444,7 @@ class JSValueRef(ctypes.c_void_p):
     def isStrictEqual(self, context, other):
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
-        if other: assert isinstance(other, JSValueRef), "Expecting a JSValueRef for the other parameter"
+        assert isinstance(other,   JSValueRef),   "Expecting a JSValueRef for the other parameter"
 
         return _JSValueIsStrictEqual(context, self, other)
     
@@ -477,6 +518,19 @@ class JSValueRef(ctypes.c_void_p):
 
 #--------------------------------------------------------------------
 class JSObjectRef(JSValueRef):
+    """Models the JSObjectRef type.
+    
+    <p>These methods call functions defined in 
+    &[JSObjectRef.h][http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/JSObjectRef/index.html].
+    
+    <p>This class is a subclass of #[JSValueRef], and so all of it's
+    methods are available to instances of this class.
+    """
+
+    kJSPropertyAttributeNone       = 0
+    kJSPropertyAttributeReadOnly   = 1 << 1
+    kJSPropertyAttributeDontEnum   = 1 << 2 
+    kJSPropertyAttributeDontDelete = 1 << 3 
 
     #----------------------------------------------------------------
     def deleteProperty(self, context, propertyName):
@@ -618,15 +672,16 @@ class JSException(Exception):
 # simple typedefs
 #-------------------------------------------------------------------
 
-class JSType(ctypes.c_int): pass
-class JSClassAttribute(ctypes.c_int): pass
-class JSPropertyAttribute(ctypes.c_int): pass
-class JSClassAttributes(ctypes.c_uint): pass
-class JSPropertyAttributes(ctypes.c_uint): pass
+JSType               = ctypes.c_int
+JSClassAttribute     = ctypes.c_int
+JSPropertyAttribute  = ctypes.c_int
+JSClassAttributes    = ctypes.c_uint
+JSPropertyAttributes = ctypes.c_uint
+JSChar               = ctypes.c_wchar
+
 class JSPropertyNameAccumulatorRef(ctypes.c_void_p): pass
 class JSClassRef(ctypes.c_void_p): pass
 class JSPropertyNameArrayRef(ctypes.c_void_p): pass
-class JSChar(ctypes.c_wchar): pass
 
 #-------------------------------------------------------------------
 # callback functions
@@ -775,35 +830,36 @@ JSClassDefinition._fields_ = [
 class JSLibrary:
     """Manages the native JavaScriptCore library
     
-    You can set the libraryPath and libraryName class variables
+    You can set the $[libraryPath] and $[libraryName] class variables
     AFTER importing the module and BEFORE invoking any other
-    code in the module.  If the libraryPath variable is set,
-    it overrides the libraryName variable.
+    code in the module.  If the $[libraryPath] variable is set,
+    it overrides the $[libraryName] variable.
+
+    <p>$[libraryName] holds the short name of the native JavaScriptCore library.
+    
+    <p>If this variable is set, but the $[libraryPath] variable is not
+    set, the library will be searched for in the system via a
+    system defined method.
+    
+    <p>The default value for $[libraryName] is $["JavaScriptCore"].
+
+    <p>$[libraryPath] Holds the fully qualified name of the JavaScriptCore library.
+    
+    <p>If this variable is set, it overrides the $[libraryName] variable
+    setting and is used as the complete name of the library.
     """
 
     libraryName = "JavaScriptCore"
-    """Holds the short name of the native JavaScriptCore library
-    
-    If this variable is set, but the libraryPath variable is not
-    set, the library will be searched for in the system via a
-    system defined method."""
-    
     libraryPath = None
-    """Holds the fully qualified name of the JavaScriptCore library
-    
-    If this library is set, it overrides the libraryName variable
-    setting and is used as the complete name of the library.
-    """
-    
     _library    = None
     
     #----------------------------------------------------------------
     @staticmethod
     def getLibrary():
-        """Return the JavaScriptCore library as a CDLL or equivalent
+        """Return the JavaScriptCore library as a CDLL or equivalent.
         
-        @rtype:  ctypes.CDLL
-        @return: the JavaScriptCore library
+        @return ctypes.CDLL
+        The JavaScriptCore library in use.
         """
 
         if JSLibrary._library: return JSLibrary._library
@@ -1388,7 +1444,12 @@ def _callbackPrint(context, function, thisObject, args):
 #-------------------------------------------------------------------------------
 def _handleJSException(e, context):
 
-    e = e.value.asJSObjectRef()
+    type = e.value.getType(context)
+    if type != JSValueRef.kJSTypeObject:
+        print "Exception thrown: value=%s" % e.value.toString(context)
+        return
+    
+    e = e.value.asJSObjectRef(context)
     
     def getDefault(context, obj, property, default):
         if not obj.hasProperty(context, property):
@@ -1444,7 +1505,7 @@ def _main():
     #---------------------------------------------------------------
     # add arguments
     #---------------------------------------------------------------
-    jsArgs = context.eval("[]").asJSObjectRef()
+    jsArgs = context.eval("[]").asJSObjectRef(context)
     jsArgs.protect(context)
     
     if len(scripts) > 0:
@@ -1467,7 +1528,7 @@ def _main():
     #---------------------------------------------------------------
     # add environment
     #---------------------------------------------------------------
-    jsEnv = context.eval("({})").asJSObjectRef()
+    jsEnv = context.eval("({})").asJSObjectRef(context)
     jsEnv.protect(context)
 
     for key, val in os.environ.iteritems():

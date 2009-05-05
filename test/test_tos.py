@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
 
         ctx = self.ctx
         
-        self.v_Object = ctx.eval("({})").asJSObjectRef()
+        self.v_Object = ctx.eval("({})").asJSObjectRef(ctx)
         self.v_NaN    = float("nan")
         
     def tearDown(self):

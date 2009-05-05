@@ -50,8 +50,8 @@ class Test(unittest.TestCase):
     def test_get_set(self):
         ctx = self.ctx
         
-        p1 = ctx.eval("({a: 111, b: 222})").asJSObjectRef()
-        o  = ctx.eval("({})").asJSObjectRef()
+        p1 = ctx.eval("({a: 111, b: 222})").asJSObjectRef(ctx)
+        o  = ctx.eval("({})").asJSObjectRef(ctx)
 
         self.assertFalse(o.hasProperty(ctx, "a"))
         self.assertFalse(o.hasProperty(ctx, "b"))
@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         self.assertTrue(o.hasProperty(ctx, "a"))
         self.assertTrue(o.hasProperty(ctx, "b"))
         
-        p2 = o.getPrototype(ctx).asJSObjectRef()
+        p2 = o.getPrototype(ctx).asJSObjectRef(ctx)
         
         self.assertEquals(111, p1.getProperty(ctx, "a").toNumber(ctx))
         self.assertEquals(222, p1.getProperty(ctx, "b").toNumber(ctx))

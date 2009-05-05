@@ -97,7 +97,7 @@ class Test(unittest.TestCase):
         script = "({x:1, y:2})"
         
         try:
-            result = ctx.eval(script).asJSObjectRef()
+            result = ctx.eval(script).asJSObjectRef(ctx)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
@@ -121,7 +121,7 @@ class Test(unittest.TestCase):
         script = "[4,5,6]"
         
         try:
-            result = ctx.eval(script).asJSObjectRef()
+            result = ctx.eval(script).asJSObjectRef(ctx)
         except JSException, e:
             _log(e.value.toString())
             raise JSException, e
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
         try:
             result = ctx.eval(script)
         except JSException, e:
-            e = e.value.asJSObjectRef()
+            e = e.value.asJSObjectRef(ctx)
             props = e.getPropertyNames(ctx)
             
             name    = e.getProperty(ctx,"name")    if e.hasProperty(ctx,"name")    else None
