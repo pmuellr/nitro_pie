@@ -1,3 +1,23 @@
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
+<!-- warning: this file was automatically generated, do not edit it. -->
+
 <html>
 
 <!-- ====================================================== -->
@@ -201,7 +221,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
-<li>2009-05-04 - Patrick Mueller - version 0.6</li>
+<li>2009-05-06 - Patrick Mueller - version 0.6</li>
 <li>2009-04-22 - Patrick Mueller - version 0.5</li>
 </ul>
 
@@ -215,18 +235,18 @@ function body_onload() {
 <!-- ====================================================== -->
 <h2>Introduction</h2>
 
-<p>The <code>nitro_pie</code> package implements a Python module
+<p>The <code>nitro_pie</code> project implements a Python module
 named <code>nitro_pie</code> which is a Python version
 of the C API for
-<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>,
-which is the JavaScript engine shipped with 
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>.
+JavaScriptCore is the JavaScript engine shipped with 
 <a href="http://webkit.org/">WebKit</a>.
-You may want to get familiarity with this framework before using
-this package in anger.  In lieu of that, examine the test cases
+You may want to get familiar with the JavaScriptCore framework before using
+this module in anger.  In lieu of that, examine the test cases
 and the "main" runner in the module itself.
 
 <p>Note that the <code>nitro_pie</code> module does not currently expose
-all of the WebKit APIs.  It does expose enough to do some interesting
+all of the JavaScriptCore APIs.  It does expose enough to do some interesting
 things.
 
 <!-- ====================================================== -->
@@ -239,19 +259,20 @@ an appropriate directory to use with other Python code.
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
 module, which is included in Python distributions starting with version 2.5.
-The <code>nitro_pie</code> module has currently only be tested and used on Mac OS X, and will likely
-need some changes to run on other operating systems.  Along with finding/building
+The <code>nitro_pie</code> module has currently only be tested and used on 
+Mac OS X 10.5, and will likely
+need some changes to run on other operating systems.  
+You will also likely need to find or build
 a copy of JavaScriptCore for those operating systems.
 
 <!-- ====================================================== -->
 <h2>Usage</h2>
 
 <p>There are test cases available in the <code>test</code> subdirectory,
-and a shell example available in the <code>nps</code> directory, to see
-some real life usage.
+to see real life usage.
 
 <p>All usages of <code>nitro_pie</code> start with obtaining a
-<code>JSContext</code> object, via the following invocation:
+<code>JSGlobalContextRef</code> object, via the following invocation:
 
 <pre>
 context = JSGlobalContextRef.create()
@@ -318,7 +339,7 @@ def callbackPrint(context, function, thisObject, args):
 </pre>
 
 <p>There is currently no direct way of creating JavaScript objects or
-arrays other than the 'primitive' values specified in the table above.
+arrays other than 'primitive' values.
 To do this indirectly, use <code>JSContextRef.eval()</code>.  For instance,
 to create a new empty object, use:
 
@@ -337,7 +358,33 @@ object = context.eval("[]")
 
 <p><code>nitro_pie</code> can also be used as a command-line
 shell.  Invoke the module as a python program, using the
-<code>-h</code> option for more help.
+<code>-h</code> option for more help on the command line
+invocation.
+
+<p>Scripts executed in the shell have access to the following
+global properties, specifically added for the shell:
+
+<ul>
+<li><p><code>arguments</code> -
+the arguments to the script. A "script name" is available as the first
+element of the list (similar to traditional argv handling).
+<li><p><code>environment</code> - an object that contains 
+the environment variables available to the process.  Each
+environment variable is a property of the <code>environment</code>
+property.
+<li><p><code>print()</code> - a function that prints the 
+string representation of it's arguments, concatenated together.
+<li><p><code>python_exec()</code> - a function which will run
+arbitrary python code.  Useful to dynamically load new JavaScript functions
+implemented in Python.  See the <code>test_shell.py</code>
+test for an example usage.  The argument to this function is
+the name of the file to pass to Python's <code>exec()</code>
+function.  The globals for the invocation are set to the
+current globals in effect when the <code>python_exec</code>
+code is executed.  The locals for the invocation are a 
+dictionary with a single key of <code>context</code> set to
+the <code>JSContextRef</code> the code is executed with.
+</ul>
 
 <!-- ====================================================== -->
 <h2>Module Reference</h2>
@@ -352,13 +399,13 @@ available at the ADC.
 <code>str | unicode | JSStringRef</code>
 as a parameter.  In these cases, if you pass a <code>str</code>
 or <code>unicode</code> value in, a <code>JSStringRef</code>
-will be created and then destroyed during the call.
+will be temporarily created and then destroyed during the call.
 
 <!-- ====================================================== -->
 <h3>Classes</h3>
 <p>
 <table cellpadding=3 cellspacing=0>
-<tr><td><code style='margin-left:2em'><strong><a href='#api.JSLibrary'>JSLibrary</a></strong></code></td><td width=100%>Manages the native JavaScriptCore library</td></tr>
+<tr><td><code style='margin-left:2em'><strong><a href='#api.JSLibrary'>JSLibrary</a></strong></code></td><td width=100%>Manages the native JavaScriptCore library.</td></tr>
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSContextRef'>JSContextRef</a></strong></code></td><td width=100%>Models the JSContextRef type.</td></tr>
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSGlobalContextRef'>JSGlobalContextRef</a></strong></code></td><td width=100%>Models the JSGlobalContextRef type.</td></tr>
 <tr><td><code style='margin-left:2em'><strong><a href='#api.JSStringRef'>JSStringRef</a></strong></code></td><td width=100%>Models the JSStringRef type.</td></tr>
@@ -369,9 +416,9 @@ will be created and then destroyed during the call.
 <hr>
 <h3><a name='api.JSLibrary'>Class JSLibrary</a></h3>
 <div style='margin-left:2em'>
-<p>Manages the native JavaScriptCore library
+<p>Manages the native JavaScriptCore library.
     
-    You can set the <code>libraryPath</code> and <code>libraryName</code> class variables
+    <p>You can set the <code>libraryPath</code> and <code>libraryName</code> class variables
     AFTER importing the module and BEFORE invoking any other
     code in the module.  If the <code>libraryPath</code> variable is set,
     it overrides the <code>libraryName</code> variable.
@@ -384,7 +431,7 @@ will be created and then destroyed during the call.
     
     <p>The default value for <code>libraryName</code> is <code>"JavaScriptCore"</code>.
 
-    <p><code>libraryPath</code> Holds the fully qualified name of the JavaScriptCore library.
+    <p><code>libraryPath</code> holds the fully qualified name of the JavaScriptCore library.
     
     <p>If this variable is set, it overrides the <code>libraryName</code> variable
     setting and is used as the complete name of the library.
@@ -402,7 +449,7 @@ Return the JavaScriptCore library as a CDLL or equivalent.<p>
 </ul>
 <p><strong>Raises:</strong>
 <ul>
-<li><p><strong><code>Error</code></strong> -  when the library cannot be loaded
+<li><p><strong><code>Exception</code></strong> -  when the library cannot be loaded
 
 </ul>
 </div>
@@ -428,7 +475,7 @@ Return the JavaScriptCore library as a CDLL or equivalent.<p>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSContextRef.checkScriptSyntax'>checkScriptSyntax(script, sourceURL = None, startingLineNumber = 1)</a></strong></code>
 <div style='margin-left:4em'>
-Check the script syntax of a string of JavaScript code.<p>
+Check the syntax of a string of JavaScript code.<p>
 <p><strong>Returns:</strong>
 <ul>
 <li><p><strong><code>boolean</code></strong> -  
@@ -437,7 +484,7 @@ Check the script syntax of a string of JavaScript code.<p>
 <p><strong>Parameters:</strong>
 <ul>
 <li><p><strong><code>script</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
-               the script to execute
+               the script to check
 <li><p><strong><code>sourceURL</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
                the name of the script
 <li><p><strong><code>startingLineNumber</code></strong> <tt>(int)</tt><br>
@@ -510,6 +557,42 @@ Creates a new JavaScript boolean value.<p>
 <p><code><strong><a name='api.JSContextRef.makeFunction'>makeFunction(name, function)</a></strong></code>
 <div style='margin-left:4em'>
 Creates a JavaScript function implemented in Python.<p>
+        <p>The third argument to the <code>makeFunction()</code> method
+        is a Python callable, which should have the following signature:
+
+<pre>
+def callback_print(context, function, thisObject, args)
+</pre>
+
+        <p>The <code>context</code> parameter 
+        (<code>JSContextRef</code>)
+        is the context that the function was invoked within.
+        The <code>function</code> parameter 
+        (<code>JSObjectRef</code>)
+        is the JavaScript function that is currently executing.
+        The <code>thisObject</code> parameter 
+        (<code>JSObjectRef</code>)
+        is the <code>'this'</code> value for the invocation.
+        The <code>args</code> parameter 
+        (list of <code>JSValueRef</code>)
+        is the array of parameters passed to the function.  
+
+        <p>The function should return whatever value it needs to return
+        as a <code>JSValueRef</code>.  Here's
+        an example of a function which prints it's arguments:
+
+<pre>
+def callbackPrint(context, function, thisObject, args):
+    line = ""
+
+    for valueRef in args:
+        string = valueRef.toString(context)
+        line   = line + string
+
+    print line
+
+    return context.makeUndefined()
+</pre>
 <p><strong>Returns:</strong>
 <ul>
 <li><p><strong><code><code><a href='#api.JSObjectRef'>JSObjectRef</a></code></code></strong> - 
@@ -626,7 +709,10 @@ Retain this context<p>
 Creates an instance of this class from a string.<p>
         Slightly different from create, this function may 
         also be passed an instance of this class and it
-        will then simply return itself.  
+        will then simply return that instance.  In this
+        case, you will have to test yourself whether or
+        not the reference was created, so you can 
+        <code>release()</code> it later.
 <p><strong>Returns:</strong>
 <ul>
 <li><p><strong><code><code><a href='#api.JSStringRef'>JSStringRef</a></code></code></strong> - 
@@ -634,7 +720,7 @@ Creates an instance of this class from a string.<p>
 </ul>
 <p><strong>Parameters:</strong>
 <ul>
-<li><p><strong><code>m</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
+<li><p><strong><code>string</code></strong> <tt>(str | unicode | <code><a href='#api.JSStringRef'>JSStringRef</a></code>)</tt><br>
                the object to convert to a <code><a href='#api.JSStringRef'>JSStringRef</a></code>
 
 </ul>
@@ -651,7 +737,7 @@ Creates an instance of this class from a string.<p>
 </ul>
 <p><strong>Parameters:</strong>
 <ul>
-<li><p><strong><code>m</code></strong> <tt>(str | unicode)</tt><br>
+<li><p><strong><code>string</code></strong> <tt>(str | unicode)</tt><br>
                the object to convert to a <code><a href='#api.JSStringRef'>JSStringRef</a></code>
 
 </ul>
@@ -706,10 +792,11 @@ Convert this object to a Python string.<p>
 <div style='margin-left:4em'>
 <p><code><strong><a name='api.JSValueRef.asJSObjectRef'>asJSObjectRef(context)</a></strong></code>
 <div style='margin-left:4em'>
-Attempts to cast this object as a <code><a href='#api.JSObjectRef'>JSObjectRef</a></code><p>
+Attempts to cast this object as a <code><a href='#api.JSObjectRef'>JSObjectRef</a></code>.<p>
         Many values returned from APIs in this module are typed
-        as <code><a href='#api.JSValueRef'>JSValueRef</a></code>, but are actually typed as <code><a href='#api.JSObjectRef'>JSObjectRef</a></code>
-        instance.  This method will cast them to <code><a href='#api.JSObjectRef'>JSObjectRef</a></code> so
+        as <code><a href='#api.JSValueRef'>JSValueRef</a></code> (by <code>ctypes</code>), but are 
+        actually <code><a href='#api.JSObjectRef'>JSObjectRef</a></code>
+        instances.  This method will cast them to <code><a href='#api.JSObjectRef'>JSObjectRef</a></code> so
         you can use those methods on the object.
 
         Primitive values and strings cannot be recast.
@@ -762,7 +849,7 @@ Returns whether this value is equal to another value.<p>
 <p><strong>Parameters:</strong>
 <ul>
 <li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
-<li><p><strong><code>other</code></strong> <tt>(#[JSValueRef)</tt><br> 
+<li><p><strong><code>other</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br> 
                the value to compare against
 
 </ul>
@@ -776,7 +863,7 @@ Returns whether this value is an instance of a constructor.<p>
 </ul>
 <p><strong>Parameters:</strong>
 <ul>
-<li><p><strong><code>constructor</code></strong> <tt>(#[JSValueRef)</tt><br> 
+<li><p><strong><code>constructor</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br> 
                the constructor to test against
 <li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
 
@@ -831,7 +918,7 @@ Returns whether this value is strictly equal to another value.<p>
 <p><strong>Parameters:</strong>
 <ul>
 <li><p><strong><code>context</code></strong> <tt>(<code><a href='#api.JSContextRef'>JSContextRef</a></code>)</tt><br> 
-<li><p><strong><code>other</code></strong> <tt>(#[JSValueRef)</tt><br> 
+<li><p><strong><code>other</code></strong> <tt>(<code><a href='#api.JSValueRef'>JSValueRef</a></code>)</tt><br> 
                the value to compare against
 
 </ul>
@@ -913,6 +1000,9 @@ Convert this value to an object.<p>
 <p><code><strong><a name='api.JSValueRef.toString'>toString(context)</a></strong></code>
 <div style='margin-left:4em'>
 Convert this value to a string.<p>
+        This method will temporarily create a <code><a href='#api.JSStringRef'>JSStringRef</a></code>
+        instance, convert that to a Python string, and then
+        release that <code><a href='#api.JSStringRef'>JSStringRef</a></code> instance.
 <p><strong>Returns:</strong>
 <ul>
 <li><p><strong><code>str</code></strong> -  the converted value (utf-8 encoded string)
@@ -1033,7 +1123,7 @@ Return the names of the properties of the object<p>
 Return the prototype of the object<p>
 <p><strong>Returns:</strong>
 <ul>
-<li><p><strong><code>#[JSValueRef</code></strong> -  the prototype of the object
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the prototype of the object
 </ul>
 <p><strong>Parameters:</strong>
 <ul>

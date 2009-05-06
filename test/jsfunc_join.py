@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #-------------------------------------------------------------------
 # The MIT License
 # 
@@ -25,39 +23,17 @@
 # 
 #-------------------------------------------------------------------
 
-import os
-import sys
-import unittest
+def jsfunc_join(context, function, thisObject, args):
+    undefined = context.makeUndefined()
 
-lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
-if lib_path not in sys.path: sys.path.insert(0, lib_path)
-
-suite  = unittest.TestSuite()
-result = unittest.TestResult()
-runner = unittest.TextTestRunner(verbosity=2)
-
-#-------------------------------------------------------------------
-def addTest(module):
-    suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(module))
+    string = "".join([arg.toString(context) for arg in args])
     
-#-------------------------------------------------------------------
-
-moduleNames = """
-test_load_lib
-test_check_script_syntax
-test_eval
-test_get_global_object
-test_make_function_with_callback
-test_properties
-test_prototype
-test_tos
-test_iss
-test_shell
-""".split()
-
-modules = [__import__(moduleName) for moduleName in moduleNames]
-
-for module in modules: addTest(module)
-
-runner.run(suite)
-
+    ref    = JSStringRef.create(string)
+    result = context.makeString(ref)
+    
+    ref.release()
+    
+    return result
+    
+function = context.makeFunction(None, jsfunc_join)
+context.getGlobalObject().setProperty(context, "join", function)

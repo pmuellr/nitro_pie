@@ -32,7 +32,7 @@
 #--------------------------------------------------------------------
 
 __author__  = "Patrick Mueller <pmuellr@yahoo.com>"
-__date__    = "2009-04-29"
+__date__    = "2009-05-06"
 __version__ = "0.6"
 
 __all__ = """
@@ -111,6 +111,7 @@ class JSContextRef(ctypes.c_void_p):
         
         @returns (#[JSValueRef]) the global object associated with the context
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s)", (self,))
         result = _JSContextGetGlobalObject(self)
         return result
@@ -122,6 +123,7 @@ class JSContextRef(ctypes.c_void_p):
         The garbage collector does *[need] to be run explicitly,
         but can be by invoking this method.
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s)", (self,))
         return _JSGarbageCollect(self)
     
@@ -145,6 +147,7 @@ class JSContextRef(ctypes.c_void_p):
                 raised when a JavaScript exception occurs
                 during the processing of the script
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, '%s', %s, '%s', %s)", (self, script, thisObject, sourceURL, startingLineNumber))
         if thisObject:         assert isinstance(context,            JSObjectRef),   "Expecting a JSValueRef for the thisObject parameter"
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
@@ -181,13 +184,13 @@ class JSContextRef(ctypes.c_void_p):
     
     #----------------------------------------------------------------
     def checkScriptSyntax(self, script, sourceURL=None, startingLineNumber=1):
-        """Check the script syntax of a string of JavaScript code.
+        """Check the syntax of a string of JavaScript code.
         
         @returns (boolean) 
                  whether the script is syntactically correct
         
         @param script             (str | unicode | #[JSStringRef])
-               the script to execute
+               the script to check
         @param sourceURL          (str | unicode | #[JSStringRef])
                the name of the script
         @param startingLineNumber (int)
@@ -197,6 +200,7 @@ class JSContextRef(ctypes.c_void_p):
                 raised when a JavaScript exception occurs
                 during the processing of the script
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, '%s', '%s', %s)", (self, script, sourceURL, startingLineNumber))
         if startingLineNumber: assert isinstance(startingLineNumber, int),          "Expecting an int for the startingLineNumber parameter"
     
@@ -226,6 +230,43 @@ class JSContextRef(ctypes.c_void_p):
     #----------------------------------------------------------------
     def makeFunction(self, name, function):
         """Creates a JavaScript function implemented in Python.
+
+        <p>The third argument to the <code>makeFunction()</code> method
+        is a Python callable, which should have the following signature:
+        
+<pre>
+def callback_print(context, function, thisObject, args)
+</pre>
+        
+        <p>The <code>context</code> parameter 
+        (<code>JSContextRef</code>)
+        is the context that the function was invoked within.
+        The <code>function</code> parameter 
+        (<code>JSObjectRef</code>)
+        is the JavaScript function that is currently executing.
+        The <code>thisObject</code> parameter 
+        (<code>JSObjectRef</code>)
+        is the <code>'this'</code> value for the invocation.
+        The <code>args</code> parameter 
+        (list of <code>JSValueRef</code>)
+        is the array of parameters passed to the function.  
+        
+        <p>The function should return whatever value it needs to return
+        as a <code>JSValueRef</code>.  Here's
+        an example of a function which prints it's arguments:
+        
+<pre>
+def callbackPrint(context, function, thisObject, args):
+    line = ""
+    
+    for valueRef in args:
+        string = valueRef.toString(context)
+        line   = line + string
+        
+    print line
+    
+    return context.makeUndefined()
+</pre>
         
         @return (#[JSObjectRef])
                 the JavaScript function just created
@@ -236,6 +277,7 @@ class JSContextRef(ctypes.c_void_p):
         @param function (callable)
                the Python function that implements the JavaScript function
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, '%s', %s)", (self, name, function))
         assert callable(function), "Expecting a function for the function parameter"
         
@@ -274,6 +316,7 @@ class JSContextRef(ctypes.c_void_p):
         @return (#[JSValueRef]) the value created
         @param value (boolean) the boolean value to create
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, %s)", (self, value))
 
         return _JSValueMakeBoolean(self, value)
@@ -284,6 +327,7 @@ class JSContextRef(ctypes.c_void_p):
         
         @return (#[JSValueRef]) the value created
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s)", (self,))
 
         return _JSValueMakeNull(self)
@@ -295,6 +339,7 @@ class JSContextRef(ctypes.c_void_p):
         @return (#[JSValueRef]) the value created
         @param number (int |float) the number value to create
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, %s)", (self, number))
 
         return _JSValueMakeNumber(self, number)
@@ -306,6 +351,7 @@ class JSContextRef(ctypes.c_void_p):
         @return (#[JSValueRef]) the value created
         @param string (#[JSStringRef]) the string value to create
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s, %s)", (self, string))
         assert isinstance(string,  JSStringRef),  "Expecting a JSStringRef for the string parameter"
 
@@ -317,6 +363,7 @@ class JSContextRef(ctypes.c_void_p):
         
         @return (#[JSValueRef]) the value created
         """
+        JSLibrary._ensureLibrary()
         _log("JSContextRef.$f(%s)", (self,))
 
         return _JSValueMakeUndefined(self)
@@ -339,6 +386,7 @@ class JSGlobalContextRef(JSContextRef):
         
         @return (#[JSGlobalContextRef]) the new instance
         """
+        JSLibrary._ensureLibrary()
         _log("JSGlobalContextRef.$f()")
         return _JSGlobalContextCreate(None)
         
@@ -346,6 +394,7 @@ class JSGlobalContextRef(JSContextRef):
     def release(self):
         """Release this context
         """
+        JSLibrary._ensureLibrary()
         _log("JSGlobalContextRef.$f(%s)", (str(self),))
         return _JSGlobalContextRelease(self)
     
@@ -353,6 +402,7 @@ class JSGlobalContextRef(JSContextRef):
     def retain(self):
         """Retain this context
         """
+        JSLibrary._ensureLibrary()
         _log("JSGlobalContextRef.$f(%s)", (str(self),))
         return _JSGlobalContextRetain(self)
     
@@ -372,14 +422,20 @@ class JSStringRef(ctypes.c_void_p):
         
         Slightly different from create, this function may 
         also be passed an instance of this class and it
-        will then simply return itself.  
+        will then simply return that instance.  In this
+        case, you will have to test yourself whether or
+        not the reference was created, so you can 
+        <code>release()</code> it later.
         
         @returns (#[JSStringRef])
                  the #[JSStringRef] created (or passed in)
                  
-        @param (str | unicode | #[JSStringRef])
+        @param string (str | unicode | #[JSStringRef])
                the object to convert to a #[JSStringRef]
         """
+        JSLibrary._ensureLibrary()
+        _log("JSStringRef.$f()")
+
         if not string: return string
         if isinstance(string, JSStringRef): return string
         
@@ -396,9 +452,10 @@ class JSStringRef(ctypes.c_void_p):
         @returns (#[JSStringRef])
                  the #[JSStringRef] created
                  
-        @param (str | unicode)
+        @param string (str | unicode)
                the object to convert to a #[JSStringRef]
         """
+        JSLibrary._ensureLibrary()
         _log("JSStringRef.$f('%s')", (string,))
     
         if isinstance(string, str):
@@ -427,6 +484,7 @@ class JSStringRef(ctypes.c_void_p):
         @returns (str)
                  always returns a UTF-8 encoding of the string
         """
+        JSLibrary._ensureLibrary()
         _log("JSStringRef.$f(%s)", (self,))
         
         len    = _JSStringGetMaximumUTF8CStringSize(self) + 1
@@ -442,6 +500,7 @@ class JSStringRef(ctypes.c_void_p):
     def retain(self):
         """Retain this instance.
         """
+        JSLibrary._ensureLibrary()
         _log("JSStringRef.$f(%s)", (self,))
     
         _JSStringRetain(self)
@@ -450,6 +509,7 @@ class JSStringRef(ctypes.c_void_p):
     def release(self):
         """Retain this instance.
         """
+        JSLibrary._ensureLibrary()
         _log("JSStringRef.$f(%s)", (self,))
         
         _JSStringRelease(self)
@@ -482,11 +542,12 @@ class JSValueRef(ctypes.c_void_p):
 
     #----------------------------------------------------------------
     def asJSObjectRef(self, context):
-        """Attempts to cast this object as a #[JSObjectRef]
+        """Attempts to cast this object as a #[JSObjectRef].
         
         Many values returned from APIs in this module are typed
-        as #[JSValueRef], but are actually typed as #[JSObjectRef]
-        instance.  This method will cast them to #[JSObjectRef] so
+        as #[JSValueRef] (by <code>ctypes</code>), but are 
+        actually #[JSObjectRef]
+        instances.  This method will cast them to #[JSObjectRef] so
         you can use those methods on the object.
         
         Primitive values and strings cannot be recast.
@@ -495,6 +556,7 @@ class JSValueRef(ctypes.c_void_p):
         @throws (TypeError)
                 raised if the object cannot be recast.
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s)", (self,))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -516,7 +578,7 @@ class JSValueRef(ctypes.c_void_p):
                  this class.
         @param context (#[JSContextRef]) 
         """
-        
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -529,6 +591,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -540,9 +603,10 @@ class JSValueRef(ctypes.c_void_p):
         
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
-        @param other (#[JSValueRef) 
+        @param other (#[JSValueRef]) 
                the value to compare against
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
         assert isinstance(context, JSContextRef),  "Expecting a JSContextRef for the context parameter"
         assert isinstance(other, JSValueRef),      "Expecting a JSValueRef for the other parameter"
@@ -553,12 +617,13 @@ class JSValueRef(ctypes.c_void_p):
     def isInstanceOf(self, context, constructor):
         """Returns whether this value is an instance of a constructor.
         
-        @param constructor (#[JSValueRef) 
+        @param constructor (#[JSValueRef]) 
                the constructor to test against
         
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, constructor))
         assert isinstance(context,     JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(constructor, JSValueRef),   "Expecting a JSValueRef for the constructor parameter"
@@ -572,6 +637,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -584,6 +650,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -596,6 +663,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -607,9 +675,10 @@ class JSValueRef(ctypes.c_void_p):
         
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
-        @param other (#[JSValueRef) 
+        @param other (#[JSValueRef]) 
                the value to compare against
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s, %s)", (self, context, other))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(other,   JSValueRef),   "Expecting a JSValueRef for the other parameter"
@@ -623,6 +692,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -635,6 +705,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) indicator
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -646,6 +717,7 @@ class JSValueRef(ctypes.c_void_p):
         
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -658,6 +730,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (boolean) the converted value
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -670,6 +743,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (float) the converted value
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -682,6 +756,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (#[JSObject]) the converted value
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -695,6 +770,7 @@ class JSValueRef(ctypes.c_void_p):
         @returns (#[JSStringRef]) the converted value
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -704,9 +780,14 @@ class JSValueRef(ctypes.c_void_p):
     def toString(self, context):
         """Convert this value to a string.
         
+        This method will temporarily create a #[JSStringRef]
+        instance, convert that to a Python string, and then
+        release that #[JSStringRef] instance.
+        
         @returns (str) the converted value (utf-8 encoded string)
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -722,6 +803,7 @@ class JSValueRef(ctypes.c_void_p):
 
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSValueRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -761,6 +843,7 @@ class JSObjectRef(JSValueRef):
         @param context      (#[JSContextRef]) 
         @param propertyName (str | unicode | #[JSStringRef])
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -780,6 +863,7 @@ class JSObjectRef(JSValueRef):
         @param context      (#[JSContextRef]) 
         @param propertyName (str | unicode | #[JSStringRef])
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -800,6 +884,7 @@ class JSObjectRef(JSValueRef):
         @param context       (#[JSContextRef]) 
         @param propertyIndex (int)
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s)", (self, propertyIndex, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         assert isinstance(propertyIndex, int),    "Expecting an integer for the propertyIndex parameter"
@@ -815,6 +900,7 @@ class JSObjectRef(JSValueRef):
         @param context (#[JSContextRef]) 
         @returns (list of str) the names of the properties of the object
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
         
@@ -836,9 +922,10 @@ class JSObjectRef(JSValueRef):
     def getPrototype(self, context):
         """Return the prototype of the object
         
-        @returns (#[JSValueRef) the prototype of the object
+        @returns (#[JSValueRef]) the prototype of the object
         @param context (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -854,6 +941,7 @@ class JSObjectRef(JSValueRef):
         @param context      (#[JSContextRef]) 
         @param propertyName (str | unicode | #[JSStringRef])
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, propertyName))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -872,6 +960,7 @@ class JSObjectRef(JSValueRef):
         @returns (boolean) indicator
         @param context      (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -884,6 +973,7 @@ class JSObjectRef(JSValueRef):
         @returns (boolean) indicator
         @param context      (#[JSContextRef]) 
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s)", (self, context))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -899,6 +989,7 @@ class JSObjectRef(JSValueRef):
         @param attributes   (int) 
                             one of the kJSPropertyAttribute defined by this class
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s, %s, %s)", (self, context, propertyName, value, attributes))
         assert isinstance(context, JSContextRef), "Expecting a JSContextRef for the context parameter"
 
@@ -921,6 +1012,7 @@ class JSObjectRef(JSValueRef):
         @param propertyIndex (int)
         @param value         (#[JSValueRef])
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s, %s)", (self, context, propertyIndex, value))
         assert isinstance(context, JSContextRef),       "Expecting a JSContextRef for the context parameter"
         assert isinstance(propertyIndex, int),          "Expecting an integer for the propertyIndex parameter"
@@ -935,6 +1027,7 @@ class JSObjectRef(JSValueRef):
         @param context   (#[JSContextRef]) 
         @param prototype (#[JSValueRef])
         """
+        JSLibrary._ensureLibrary()
         _log("JSObjectRef.$f(%s, %s, %s)", (self, context, prototype))
         assert isinstance(context, JSContextRef),               "Expecting a JSContextRef for the context parameter"
         if prototype: assert isinstance(prototype, JSValueRef), "Expecting a JSValueRef for the prototype parameter"
@@ -1122,9 +1215,9 @@ JSClassDefinition._fields_ = [
 
 #--------------------------------------------------------------------
 class JSLibrary:
-    """Manages the native JavaScriptCore library
+    """Manages the native JavaScriptCore library.
     
-    You can set the $[libraryPath] and $[libraryName] class variables
+    <p>You can set the $[libraryPath] and $[libraryName] class variables
     AFTER importing the module and BEFORE invoking any other
     code in the module.  If the $[libraryPath] variable is set,
     it overrides the $[libraryName] variable.
@@ -1137,7 +1230,7 @@ class JSLibrary:
     
     <p>The default value for $[libraryName] is $["JavaScriptCore"].
 
-    <p>$[libraryPath] Holds the fully qualified name of the JavaScriptCore library.
+    <p>$[libraryPath] holds the fully qualified name of the JavaScriptCore library.
     
     <p>If this variable is set, it overrides the $[libraryName] variable
     setting and is used as the complete name of the library.
@@ -1146,6 +1239,14 @@ class JSLibrary:
     libraryName = "JavaScriptCore"
     libraryPath = None
     _library    = None
+
+    #----------------------------------------------------------------
+    @staticmethod
+    def _ensureLibrary():
+        if JSLibrary._library: return
+        
+        JSLibrary.getLibrary()
+        JSLibrary._loadLibrary()
     
     #----------------------------------------------------------------
     @staticmethod
@@ -1153,7 +1254,7 @@ class JSLibrary:
         """Return the JavaScriptCore library as a CDLL or equivalent.
         
         @return (ctypes.CDLL) the JavaScriptCore library in use
-        @throws (Error) when the library cannot be loaded
+        @throws (Exception) when the library cannot be loaded
         """
 
         if JSLibrary._library: return JSLibrary._library
@@ -1162,474 +1263,478 @@ class JSLibrary:
             JSLibrary.libraryPath = ctypes.util.find_library(JSLibrary.libraryName)
             
         if not JSLibrary.libraryPath:
-            raise Error, "unable to find the JavaScriptCore library"
+            raise Exception, "unable to find the JavaScriptCore library"
             
         JSLibrary._library = ctypes.CDLL(JSLibrary.libraryPath)
         return JSLibrary._library
 
-#-------------------------------------------------------------------
-def _defineFunction(name, resType, parms):
-    """define a function named 'name'
-    
-    parms should be a sequence of sequences of:
-    
-    (type, flags, name, defaultValue)
-    
-    per the ctypes conventions
-    """
-    
-    types      = [ptype      for ptype, pname in parms]
-    paramFlags = [(1, pname) for ptype, pname in parms]
-    
-    library   = JSLibrary.getLibrary()
-    prototype = ctypes.CFUNCTYPE(resType, *types)
-    function  = prototype((name, library), tuple(paramFlags))
-    
-    globals()["_" + name] = function
-
-#===================================================================
-# JSBase.h
-#===================================================================
-
-#-------------------------------------------------------------------
-_defineFunction("JSCheckScriptSyntax", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSStringRef,                     "script"), 
-    (JSStringRef,                     "sourceURL"), 
-    (ctypes.c_int32,                  "startingLineNumber"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSEvaluateScript", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSStringRef,                     "script"), 
-    (JSObjectRef,                     "thisObject"),
-    (JSStringRef,                     "sourceURL"),
-    (ctypes.c_int,                    "startingLineNumber"),
-    (ctypes.POINTER(JSValueRef),      "exception"),
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSGarbageCollect", None, (
-    (JSContextRef,                    "ctx"), 
-))
-
-#===================================================================
-# JSContextRef
-#===================================================================
-
-#-------------------------------------------------------------------
-_defineFunction("JSContextGetGlobalObject", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSGlobalContextCreate", JSGlobalContextRef, (
-    (JSClassRef,                      "globalObjectClass"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSGlobalContextRelease", None, (
-    (JSGlobalContextRef,              "ctx"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSGlobalContextRetain", JSGlobalContextRef, (
-    (JSGlobalContextRef,              "ctx"), 
-))
-
-#===================================================================
-# JSObjectRef
-#===================================================================
-
-#-------------------------------------------------------------------
-_defineFunction("JSClassCreate", JSClassRef, (
-    (ctypes.POINTER(JSClassDefinition), "definition"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSClassRelease", None, (
-    (JSClassRef,                      "jsClass"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSClassRetain", None, (
-    (JSClassRef,                      "jsClass"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectCallAsConstructor", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (ctypes.c_size_t,                 "argumentCount"), 
-    (ctypes.POINTER(JSValueRef),      "arguments"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectCallAsFunction", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSObjectRef,                     "thisObject"), 
-    (ctypes.c_size_t,                 "argumentCount"), 
-    (ctypes.POINTER(JSValueRef),      "arguments"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectCopyPropertyNames", JSPropertyNameArrayRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectDeleteProperty", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSStringRef,                     "propertyName"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectGetPrivate", ctypes.c_void_p, (
-    (JSObjectRef,                     "object"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectGetProperty", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSStringRef,                     "propertyName"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectGetPropertyAtIndex", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (ctypes.c_uint,                   "propertyIndex"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectGetPrototype", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectHasProperty", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSStringRef,                     "propertyName"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectIsConstructor", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectIsFunction", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectMake", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSClassRef,                      "jsClass"), 
-    (ctypes.c_void_p,                 "data"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectMakeConstructor", JSObjectRef, (
-    (JSContextRef,                      "ctx"), 
-    (JSClassRef,                        "jsClass"), 
-    (JSObjectCallAsConstructorCallback, "callAsConstructor"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectMakeFunction", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSStringRef,                     "name"), 
-    (ctypes.c_uint,                   "parameterCount"), 
-    (ctypes.POINTER(JSStringRef),     "parameterNames"), 
-    (JSStringRef,                     "body"), 
-    (JSStringRef,                     "sourceURL"), 
-    (ctypes.c_int,                    "startingLineNumber"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectMakeFunctionWithCallback", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSStringRef,                     "name"), 
-    (JSObjectCallAsFunctionCallback,  "callAsFunction"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectSetPrivate", ctypes.c_int, (
-    (JSObjectRef,                     "object"), 
-    (ctypes.c_void_p,                 "data"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectSetProperty", None, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSStringRef,                     "propertyName"), 
-    (JSValueRef,                      "value"), 
-    (JSPropertyAttributes,            "attributes"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectSetPropertyAtIndex", None, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (ctypes.c_uint,                   "propertyIndex"), 
-    (JSValueRef,                      "value"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSObjectSetPrototype", None, (
-    (JSContextRef,                    "ctx"), 
-    (JSObjectRef,                     "object"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSPropertyNameAccumulatorAddName", None, (
-    (JSPropertyNameAccumulatorRef,    "accumulator"), 
-    (JSStringRef,                     "propertyName"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSPropertyNameArrayGetCount", ctypes.c_size_t, (
-    (JSPropertyNameArrayRef,          "array"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSPropertyNameArrayGetNameAtIndex", JSStringRef, (
-    (JSPropertyNameArrayRef,          "array"), 
-    (ctypes.c_size_t,                 "index"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSPropertyNameArrayRelease", None, (
-    (JSPropertyNameArrayRef,          "array"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSPropertyNameArrayRetain", JSPropertyNameArrayRef, (
-    (JSPropertyNameArrayRef,          "array"), 
-))
-
-#===================================================================
-# JSStringRef
-#===================================================================
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringCreateWithCharacters", JSStringRef, (
-    (ctypes.POINTER(JSChar),          "chars"), 
-    (ctypes.c_size_t,                 "numChars"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringCreateWithUTF8CString", JSStringRef, (
-    (ctypes.c_char_p,                  "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringGetCharactersPtr", ctypes.POINTER(JSChar), (
-    (JSStringRef,                     "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringGetLength", ctypes.c_int32, (
-    (JSStringRef,                     "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringGetMaximumUTF8CStringSize", ctypes.c_size_t, (
-    (JSStringRef,                     "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringGetUTF8CString", ctypes.c_size_t, (
-    (JSStringRef,                     "string"), 
-    (ctypes.c_char_p,                 "buffer"), 
-    (ctypes.c_size_t,                 "bufferSize"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringIsEqual", ctypes.c_int, (
-    (JSStringRef,                     "a"), 
-    (JSStringRef,                     "b"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringIsEqualToUTF8CString", ctypes.c_int, (
-    (JSStringRef,                     "a"), 
-    (ctypes.c_char_p,                 "b"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringRelease", None, (
-    (JSStringRef,                     "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSStringRetain", JSStringRef, (
-    (JSStringRef,                     "string"), 
-))
-
-#===================================================================
-# JSValueRef
-#===================================================================
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueGetType", JSType, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsBoolean", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsEqual", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "a"), 
-    (JSValueRef,                      "b"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsInstanceOfConstructor", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-    (JSObjectRef,                     "constructor"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsNull", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsNumber", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsObject", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsObjectOfClass", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-    (JSClassRef,                      "jsClass"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsStrictEqual", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "a"), 
-    (JSValueRef,                      "b"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsString", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueIsUndefined", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueMakeBoolean", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (ctypes.c_int,                    "boolean"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueMakeNull", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueMakeNumber", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (ctypes.c_double,                 "number"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueMakeString", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSStringRef,                     "string"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueMakeUndefined", JSValueRef, (
-    (JSContextRef,                    "ctx"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueProtect", None, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueToBoolean", ctypes.c_int, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueToNumber", ctypes.c_double, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueToObject", JSObjectRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueToStringCopy", JSStringRef, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-    (ctypes.POINTER(JSValueRef),      "exception"), 
-))
-
-#-------------------------------------------------------------------
-_defineFunction("JSValueUnprotect", None, (
-    (JSContextRef,                    "ctx"), 
-    (JSValueRef,                      "value"), 
-))
+    #-------------------------------------------------------------------
+    @staticmethod
+    def _defineFunction(name, resType, parms):
+        """define a function named 'name'
+        
+        parms should be a sequence of sequences of:
+        
+        (type, flags, name, defaultValue)
+        
+        per the ctypes conventions
+        """
+        
+        types      = [ptype      for ptype, pname in parms]
+        paramFlags = [(1, pname) for ptype, pname in parms]
+        
+        prototype = ctypes.CFUNCTYPE(resType, *types)
+        function  = prototype((name, JSLibrary._library), tuple(paramFlags))
+        
+        globals()["_" + name] = function
+
+    #----------------------------------------------------------------
+    @staticmethod
+    def _loadLibrary():
+
+        #===================================================================
+        # JSBase.h
+        #===================================================================
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSCheckScriptSyntax", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSStringRef,                     "script"), 
+            (JSStringRef,                     "sourceURL"), 
+            (ctypes.c_int32,                  "startingLineNumber"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSEvaluateScript", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSStringRef,                     "script"), 
+            (JSObjectRef,                     "thisObject"),
+            (JSStringRef,                     "sourceURL"),
+            (ctypes.c_int,                    "startingLineNumber"),
+            (ctypes.POINTER(JSValueRef),      "exception"),
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSGarbageCollect", None, (
+            (JSContextRef,                    "ctx"), 
+        ))
+        
+        #===================================================================
+        # JSContextRef
+        #===================================================================
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSContextGetGlobalObject", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSGlobalContextCreate", JSGlobalContextRef, (
+            (JSClassRef,                      "globalObjectClass"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSGlobalContextRelease", None, (
+            (JSGlobalContextRef,              "ctx"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSGlobalContextRetain", JSGlobalContextRef, (
+            (JSGlobalContextRef,              "ctx"), 
+        ))
+        
+        #===================================================================
+        # JSObjectRef
+        #===================================================================
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSClassCreate", JSClassRef, (
+            (ctypes.POINTER(JSClassDefinition), "definition"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSClassRelease", None, (
+            (JSClassRef,                      "jsClass"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSClassRetain", None, (
+            (JSClassRef,                      "jsClass"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectCallAsConstructor", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (ctypes.c_size_t,                 "argumentCount"), 
+            (ctypes.POINTER(JSValueRef),      "arguments"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectCallAsFunction", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSObjectRef,                     "thisObject"), 
+            (ctypes.c_size_t,                 "argumentCount"), 
+            (ctypes.POINTER(JSValueRef),      "arguments"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectCopyPropertyNames", JSPropertyNameArrayRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectDeleteProperty", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSStringRef,                     "propertyName"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectGetPrivate", ctypes.c_void_p, (
+            (JSObjectRef,                     "object"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectGetProperty", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSStringRef,                     "propertyName"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectGetPropertyAtIndex", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (ctypes.c_uint,                   "propertyIndex"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectGetPrototype", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectHasProperty", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSStringRef,                     "propertyName"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectIsConstructor", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectIsFunction", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectMake", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSClassRef,                      "jsClass"), 
+            (ctypes.c_void_p,                 "data"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectMakeConstructor", JSObjectRef, (
+            (JSContextRef,                      "ctx"), 
+            (JSClassRef,                        "jsClass"), 
+            (JSObjectCallAsConstructorCallback, "callAsConstructor"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectMakeFunction", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSStringRef,                     "name"), 
+            (ctypes.c_uint,                   "parameterCount"), 
+            (ctypes.POINTER(JSStringRef),     "parameterNames"), 
+            (JSStringRef,                     "body"), 
+            (JSStringRef,                     "sourceURL"), 
+            (ctypes.c_int,                    "startingLineNumber"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectMakeFunctionWithCallback", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSStringRef,                     "name"), 
+            (JSObjectCallAsFunctionCallback,  "callAsFunction"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectSetPrivate", ctypes.c_int, (
+            (JSObjectRef,                     "object"), 
+            (ctypes.c_void_p,                 "data"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectSetProperty", None, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSStringRef,                     "propertyName"), 
+            (JSValueRef,                      "value"), 
+            (JSPropertyAttributes,            "attributes"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectSetPropertyAtIndex", None, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (ctypes.c_uint,                   "propertyIndex"), 
+            (JSValueRef,                      "value"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSObjectSetPrototype", None, (
+            (JSContextRef,                    "ctx"), 
+            (JSObjectRef,                     "object"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSPropertyNameAccumulatorAddName", None, (
+            (JSPropertyNameAccumulatorRef,    "accumulator"), 
+            (JSStringRef,                     "propertyName"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSPropertyNameArrayGetCount", ctypes.c_size_t, (
+            (JSPropertyNameArrayRef,          "array"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSPropertyNameArrayGetNameAtIndex", JSStringRef, (
+            (JSPropertyNameArrayRef,          "array"), 
+            (ctypes.c_size_t,                 "index"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSPropertyNameArrayRelease", None, (
+            (JSPropertyNameArrayRef,          "array"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSPropertyNameArrayRetain", JSPropertyNameArrayRef, (
+            (JSPropertyNameArrayRef,          "array"), 
+        ))
+        
+        #===================================================================
+        # JSStringRef
+        #===================================================================
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringCreateWithCharacters", JSStringRef, (
+            (ctypes.POINTER(JSChar),          "chars"), 
+            (ctypes.c_size_t,                 "numChars"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringCreateWithUTF8CString", JSStringRef, (
+            (ctypes.c_char_p,                  "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringGetCharactersPtr", ctypes.POINTER(JSChar), (
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringGetLength", ctypes.c_int32, (
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringGetMaximumUTF8CStringSize", ctypes.c_size_t, (
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringGetUTF8CString", ctypes.c_size_t, (
+            (JSStringRef,                     "string"), 
+            (ctypes.c_char_p,                 "buffer"), 
+            (ctypes.c_size_t,                 "bufferSize"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringIsEqual", ctypes.c_int, (
+            (JSStringRef,                     "a"), 
+            (JSStringRef,                     "b"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringIsEqualToUTF8CString", ctypes.c_int, (
+            (JSStringRef,                     "a"), 
+            (ctypes.c_char_p,                 "b"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringRelease", None, (
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSStringRetain", JSStringRef, (
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #===================================================================
+        # JSValueRef
+        #===================================================================
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueGetType", JSType, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsBoolean", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsEqual", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "a"), 
+            (JSValueRef,                      "b"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsInstanceOfConstructor", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+            (JSObjectRef,                     "constructor"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsNull", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsNumber", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsObject", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsObjectOfClass", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+            (JSClassRef,                      "jsClass"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsStrictEqual", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "a"), 
+            (JSValueRef,                      "b"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsString", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueIsUndefined", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueMakeBoolean", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (ctypes.c_int,                    "boolean"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueMakeNull", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueMakeNumber", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (ctypes.c_double,                 "number"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueMakeString", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSStringRef,                     "string"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueMakeUndefined", JSValueRef, (
+            (JSContextRef,                    "ctx"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueProtect", None, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueToBoolean", ctypes.c_int, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueToNumber", ctypes.c_double, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueToObject", JSObjectRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueToStringCopy", JSStringRef, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+            (ctypes.POINTER(JSValueRef),      "exception"), 
+        ))
+        
+        #-------------------------------------------------------------------
+        JSLibrary._defineFunction("JSValueUnprotect", None, (
+            (JSContextRef,                    "ctx"), 
+            (JSValueRef,                      "value"), 
+        ))
 
 #-------------------------------------------------------------------
 # code for main entry point below
@@ -1677,6 +1782,7 @@ class _ScriptFile:
     def __init__(self, filename):
         self.filename = filename
         if (filename == "-"): 
+            self.string   = None
             self.filename = "<stdin>"
             return
         
@@ -1723,21 +1829,24 @@ def _parseArgs():
     return (scripts, arguments, useRepl)
 
 #-------------------------------------------------------------------------------
-def _callbackPrint(context, function, thisObject, args):
-#    if True: return
-    _log("$f(%s, %s, %s, %s)", (context, function, thisObject, args))
-
-    line = ""
-    
-    for valueRef in args:
-        string = valueRef.toString(context)
-        _log("$f() valueRef.toString(%s): '%s'", (context, string))
-        line   = line + string
-        
-    print line
-    _log("$f() <-")
+def _jsfunc_print(context, function, thisObject, args):
+    print "".join([arg.toString(context) for arg in args])
     
     return context.makeUndefined()
+
+#-------------------------------------------------------------------------------
+def _jsfunc_python_exec(context, function, thisObject, args):
+
+    undefined = context.makeUndefined()
+    
+    if len(args) == 0: return undefined
+
+    ifile = args[0].toString(context)
+    
+    execfile(ifile, globals(), { "context" : context })
+    
+    return undefined
+
 
 #-------------------------------------------------------------------------------
 def _handleJSException(e, context):
@@ -1797,8 +1906,11 @@ def _main():
     #---------------------------------------------------------------
     # add builtins
     #---------------------------------------------------------------
-    function = context.makeFunction(None, _callbackPrint)
+    function = context.makeFunction(  "print", _jsfunc_print)
     globalObject.setProperty(context, "print", function)
+    
+    function = context.makeFunction(  "python_exec", _jsfunc_python_exec)
+    globalObject.setProperty(context, "python_exec", function)
     
     #---------------------------------------------------------------
     # add arguments
@@ -1841,11 +1953,14 @@ def _main():
     # run scripts
     #---------------------------------------------------------------
     for script in scripts:
-        try:
-            result = context.eval(script.string, None, script.filename, 1)
-        except JSException, e:
-            _handleJSException(e, context)
-            break
+        if not script.string:
+            useRepl = True
+        else:
+            try:
+                result = context.eval(script.string, None, script.filename, 1)
+            except JSException, e:
+                _handleJSException(e, context)
+                break
             
     #---------------------------------------------------------------
     # run repl

@@ -40,14 +40,45 @@ class Test(unittest.TestCase):
     
     #---------------------------------------------------------------
     def setUp(self):
-        self.ctx = JSGlobalContextRef.create()
+        pass
         
     def tearDown(self):
-        self.ctx.release()
+        pass
 
     #---------------------------------------------------------------
-    def test_gc(self):
-        self.ctx.garbageCollect()
+    def test_loadLibrary(self):
+    
+        #-----------------------------------------------------------
+        origLibraryName = JSLibrary.libraryName
+        JSLibrary.libraryName = "JavaScriptCoreX"
+        
+        passed = False
+        try:
+            context = JSGlobalContextRef.create()
+        except:
+            passed = True
+            
+        self.assertTrue(passed)
+        
+        #-----------------------------------------------------------
+        JSLibrary.libraryName = origLibraryName
+        JSLibrary.libraryPath = "/tmp/JavaScriptCore"
+
+        passed = False
+        try:
+            context = JSGlobalContextRef.create()
+        except:
+            passed = True
+            
+        self.assertTrue(passed)
+
+        #-----------------------------------------------------------
+        JSLibrary.libraryName = origLibraryName
+        JSLibrary.libraryPath = None
+        
+        context = JSGlobalContextRef.create()
+        context.garbageCollect()
+        context.release()
                 
 #-------------------------------------------------------------------
 if __name__ == '__main__':

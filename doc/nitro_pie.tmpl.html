@@ -201,7 +201,7 @@ function body_onload() {
 
 <h3>History</h3>
 <ul>
-<li>2009-05-04 - Patrick Mueller - version 0.6</li>
+<li>2009-05-06 - Patrick Mueller - version 0.6</li>
 <li>2009-04-22 - Patrick Mueller - version 0.5</li>
 </ul>
 
@@ -215,18 +215,18 @@ function body_onload() {
 <!-- ====================================================== -->
 <h2>Introduction</h2>
 
-<p>The <code>nitro_pie</code> package implements a Python module
+<p>The <code>nitro_pie</code> project implements a Python module
 named <code>nitro_pie</code> which is a Python version
 of the C API for
-<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>,
-which is the JavaScript engine shipped with 
+<a href="http://developer.apple.com/documentation/Carbon/Reference/WebKit_JavaScriptCore_Ref/index.html#//apple_ref/doc/framework/javascriptcore_fw">JavaScriptCore</a>.
+JavaScriptCore is the JavaScript engine shipped with 
 <a href="http://webkit.org/">WebKit</a>.
-You may want to get familiarity with this framework before using
-this package in anger.  In lieu of that, examine the test cases
+You may want to get familiar with the JavaScriptCore framework before using
+this module in anger.  In lieu of that, examine the test cases
 and the "main" runner in the module itself.
 
 <p>Note that the <code>nitro_pie</code> module does not currently expose
-all of the WebKit APIs.  It does expose enough to do some interesting
+all of the JavaScriptCore APIs.  It does expose enough to do some interesting
 things.
 
 <!-- ====================================================== -->
@@ -239,19 +239,20 @@ an appropriate directory to use with other Python code.
 <p>The module makes extensive use of the 
 <code><a href="http://docs.python.org/library/ctypes.html#module-ctypes">ctypes</a></code>
 module, which is included in Python distributions starting with version 2.5.
-The <code>nitro_pie</code> module has currently only be tested and used on Mac OS X, and will likely
-need some changes to run on other operating systems.  Along with finding/building
+The <code>nitro_pie</code> module has currently only be tested and used on 
+Mac OS X 10.5, and will likely
+need some changes to run on other operating systems.  
+You will also likely need to find or build
 a copy of JavaScriptCore for those operating systems.
 
 <!-- ====================================================== -->
 <h2>Usage</h2>
 
 <p>There are test cases available in the <code>test</code> subdirectory,
-and a shell example available in the <code>nps</code> directory, to see
-some real life usage.
+to see real life usage.
 
 <p>All usages of <code>nitro_pie</code> start with obtaining a
-<code>JSContext</code> object, via the following invocation:
+<code>JSGlobalContextRef</code> object, via the following invocation:
 
 <pre>
 context = JSGlobalContextRef.create()
@@ -318,7 +319,7 @@ def callbackPrint(context, function, thisObject, args):
 </pre>
 
 <p>There is currently no direct way of creating JavaScript objects or
-arrays other than the 'primitive' values specified in the table above.
+arrays other than 'primitive' values.
 To do this indirectly, use <code>JSContextRef.eval()</code>.  For instance,
 to create a new empty object, use:
 
@@ -337,7 +338,33 @@ object = context.eval("[]")
 
 <p><code>nitro_pie</code> can also be used as a command-line
 shell.  Invoke the module as a python program, using the
-<code>-h</code> option for more help.
+<code>-h</code> option for more help on the command line
+invocation.
+
+<p>Scripts executed in the shell have access to the following
+global properties, specifically added for the shell:
+
+<ul>
+<li><p><code>arguments</code> -
+the arguments to the script. A "script name" is available as the first
+element of the list (similar to traditional argv handling).
+<li><p><code>environment</code> - an object that contains 
+the environment variables available to the process.  Each
+environment variable is a property of the <code>environment</code>
+property.
+<li><p><code>print()</code> - a function that prints the 
+string representation of it's arguments, concatenated together.
+<li><p><code>python_exec()</code> - a function which will run
+arbitrary python code.  Useful to dynamically load new JavaScript functions
+implemented in Python.  See the <code>test_shell.py</code>
+test for an example usage.  The argument to this function is
+the name of the file to pass to Python's <code>exec()</code>
+function.  The globals for the invocation are set to the
+current globals in effect when the <code>python_exec</code>
+code is executed.  The locals for the invocation are a 
+dictionary with a single key of <code>context</code> set to
+the <code>JSContextRef</code> the code is executed with.
+</ul>
 
 <!-- ====================================================== -->
 <h2>Module Reference</h2>
@@ -352,7 +379,7 @@ available at the ADC.
 <code>str | unicode | JSStringRef</code>
 as a parameter.  In these cases, if you pass a <code>str</code>
 or <code>unicode</code> value in, a <code>JSStringRef</code>
-will be created and then destroyed during the call.
+will be temporarily created and then destroyed during the call.
 
 <!-- ====================================================== -->
 %api_doc%

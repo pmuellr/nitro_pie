@@ -419,6 +419,11 @@ iFile = open(iFilename)
 contents = iFile.read()
 iFile.close()
 
+warning = "<!-- warning: this file was automatically generated, do not edit it. -->\n\n"
+
+warning = warning * 10
+
 oFile = open(oFilename, "w")
+oFile.write(warning)
 oFile.write(contents.replace("%api_doc%", apiOut))
 oFile.close()
