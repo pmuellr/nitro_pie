@@ -53,6 +53,7 @@ test_prototype
 test_tos
 test_iss
 test_shell
+test_require
 """.split()
 
 modules = [__import__(moduleName) for moduleName in moduleNames]

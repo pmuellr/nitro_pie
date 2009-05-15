@@ -26,7 +26,13 @@
 #-------------------------------------------------------------------
 
 import os
+import sys
 import inspect
+
+lib_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../lib"))
+if lib_path not in sys.path: sys.path.insert(0, lib_path)
+
+from nitro_pie import *
 
 #-------------------------------------------------------------------
 # logger
@@ -64,3 +70,40 @@ def get_js_props(jsObject):
         result[name] = val
 
     return result
+
+#-------------------------------------------------------------------
+def dump_exception(e, context):
+    
+    type = e.value.getType(context)
+    if type != JSValueRef.kJSTypeObject:
+        print "Exception thrown: value=%s" % e.value.toString(context)
+        return
+    
+    e = e.value.asJSObjectRef(context)
+    
+    def getDefault(context, obj, property, default):
+        if not obj.hasProperty(context, property):
+            return default
+            
+        val = obj.getProperty(context, property)
+        return val.toString(context)
+    
+    name      = getDefault(context, e, "name",      "???")
+    message   = getDefault(context, e, "message",   "???") 
+    sourceURL = getDefault(context, e, "sourceURL", "???")
+    line      = getDefault(context, e, "line",      "???")
+
+    print "Exception thrown: %s: %s: at %s[%s]" % (name, message, sourceURL, line)
+
+    props = e.getPropertyNames(context)
+    knownProps = "name message sourceURL line".split()
+    for prop in props:
+        if prop in knownProps: continue
+
+        val = e.getProperty(context, prop)
+        valStr = val.toString(context)
+        
+        print "   %s: %s" % (prop, valStr)
+        
+    print
+    

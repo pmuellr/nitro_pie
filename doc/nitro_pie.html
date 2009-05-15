@@ -473,6 +473,10 @@ Return the JavaScriptCore library as a CDLL or equivalent.<p>
 <hr>
 <h4>Methods</h4>
 <div style='margin-left:4em'>
+<p><code><strong><a name='api.JSContextRef.addBuiltins'>addBuiltins()</a></strong></code>
+<div style='margin-left:4em'>
+Adds the nitro_pie shell builtin functions to this context.<p>
+</div>
 <p><code><strong><a name='api.JSContextRef.checkScriptSyntax'>checkScriptSyntax(script, sourceURL = None, startingLineNumber = 1)</a></strong></code>
 <div style='margin-left:4em'>
 Check the syntax of a string of JavaScript code.<p>
@@ -626,6 +630,15 @@ Creates a new JavaScript number value.<p>
 <p><strong>Parameters:</strong>
 <ul>
 <li><p><strong><code>number</code></strong> <tt>(int |float)</tt><br> the number value to create
+
+</ul>
+</div>
+<p><code><strong><a name='api.JSContextRef.makePythonObjectRef'>makePythonObjectRef(pythonValue)</a></strong></code>
+<div style='margin-left:4em'>
+Creates a new JSObjectRef which holds a Python value.<p>
+<p><strong>Returns:</strong>
+<ul>
+<li><p><strong><code><code><a href='#api.JSValueRef'>JSValueRef</a></code></code></strong> -  the value created
 
 </ul>
 </div>

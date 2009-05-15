@@ -76,20 +76,36 @@ def _log(message="", args=None):
     
     print "%s[%4d]: %s" % (filename, lineNumber, message)
 
-if False:
-    #-------------------------------------------------------------------
-    kJSTypeUndefined = 0
-    kJSTypeNull      = 1
-    kJSTypeBoolean   = 2
-    kJSTypeNumber    = 3
-    kJSTypeString    = 4
-    kJSTypeObject    = 5 
+#--------------------------------------------------------------------
+class RememberedObjects(object):
+
+    index      = 1
+    remembered = {}
     
-    #-------------------------------------------------------------------
-    kJSPropertyAttributeNone       = 0
-    kJSPropertyAttributeReadOnly   = 1 << 1
-    kJSPropertyAttributeDontEnum   = 1 << 2 
-    kJSPropertyAttributeDontDelete = 1 << 3 
+    #----------------------------------------------------------------
+    @staticmethod
+    def remember(obj, finalizer=None):
+        remembered[index] = (obj, finalizer)
+        
+        result  = index
+        index  += 1
+        return result
+        
+    #----------------------------------------------------------------
+    @staticmethod
+    def get(index):
+        return remembered[index][0]
+        
+    #----------------------------------------------------------------
+    @staticmethod
+    def forget(index):
+        (obj, finalizer) = remembered[index]
+
+        del remembered[index]
+        
+        if finalizer:
+            finalizer(obj)
+    
 
 #--------------------------------------------------------------------
 class JSContextRef(ctypes.c_void_p):
@@ -368,6 +384,25 @@ def callbackPrint(context, function, thisObject, args):
 
         return _JSValueMakeUndefined(self)
 
+    #----------------------------------------------------------------
+    def makePythonObjectRef(self, pythonValue):
+        """Creates a new JSObjectRef which holds a Python value.
+        
+        @return (#[JSValueRef]) the value created
+        """
+        JSLibrary._ensureLibrary()
+        _log("JSContextRef.$f(%s)", (self,))
+
+        return _JSValueMakeUndefined(self)
+
+        #----------------------------------------------------------------
+    def addBuiltins(self):
+        """Adds the nitro_pie shell builtin functions to this context.
+        """
+        
+        _register_builtins(self)
+        
+        return _JSValueMakeUndefined(self)
     
 #--------------------------------------------------------------------
 class JSGlobalContextRef(JSContextRef):
@@ -1849,6 +1884,42 @@ def _jsfunc_python_exec(context, function, thisObject, args):
 
 
 #-------------------------------------------------------------------------------
+require_modules = {}
+
+def _jsfunc_require(context, function, thisObject, args):
+    undefined = context.makeUndefined()
+
+    if len(args) == 0: return undefined
+
+    modFileName = args[0].toString(context)
+    if not os.path.exists(modFileName): 
+        print "Unabled to load module '%s': not found" % modFileName
+        return undefined
+
+    modFile = open(modFileName)
+    modFileContents = modFile.read()
+    modFile.close()
+    
+    if modFileName in require_modules:
+        return require_modules[modFileName]
+        
+    module = context.eval("({})")
+    require_modules[modFileName] = module
+    
+    modContext = JSGlobalContextRef.create()
+    modGlobal  = modContext.getGlobalObject()
+    modGlobal.protect(modContext)
+    
+    modGlobal.setProperty(modContext, "exports", module)
+    
+    _register_builtins(modContext)
+    
+    modContext.eval(modFileContents, None, modFileName)
+    
+    return module
+
+
+#-------------------------------------------------------------------------------
 def _handleJSException(e, context):
 
     type = e.value.getType(context)
@@ -1883,6 +1954,22 @@ def _handleJSException(e, context):
         print "   %s: %s" % (prop, valStr)
         
     print
+
+#-------------------------------------------------------------------------------
+def _register_builtins(context):
+    globalObject = context.getGlobalObject()
+    globalObject.protect(context)
+    
+    function = context.makeFunction(  "print", _jsfunc_print)
+    globalObject.setProperty(context, "print", function)
+    
+    function = context.makeFunction(  "python_exec", _jsfunc_python_exec)
+    globalObject.setProperty(context, "python_exec", function)
+    
+    function = context.makeFunction(  "require", _jsfunc_require)
+    globalObject.setProperty(context, "require", function)
+
+    globalObject.unprotect(context)
     
 #-------------------------------------------------------------------------------
 def _main():
@@ -1901,16 +1988,11 @@ def _main():
     context = JSGlobalContextRef.create()
     
     globalObject = context.getGlobalObject()
-    globalObject.protect(context)
     
     #---------------------------------------------------------------
     # add builtins
     #---------------------------------------------------------------
-    function = context.makeFunction(  "print", _jsfunc_print)
-    globalObject.setProperty(context, "print", function)
-    
-    function = context.makeFunction(  "python_exec", _jsfunc_python_exec)
-    globalObject.setProperty(context, "python_exec", function)
+    _register_builtins(context)
     
     #---------------------------------------------------------------
     # add arguments
